@@ -73,6 +73,7 @@ def simulate(state):
 def generate_successors(state, curr_turn):
     '''Determine if particular movement (single move or jump(s)) are possible. If jumps are possible, it must be done.
     After the move check, move the piece and create a new board with the moved piece as a possible successor state'''
+    successors = []
     if curr_turn == 'r':
         # Red begins on bottom 3 rows of board
         for i in range(state.height):
@@ -82,9 +83,9 @@ def generate_successors(state, curr_turn):
                     if state.board[i][j] == '.':
                         continue
                     elif state.board[i][j] == 'r':
-                        move_check(state,j,i,'r')
+                        successors += move_check(state,j,i,'r')
                     elif state.board[i][j] == 'R':
-                        move_check(state,j,i,'R')
+                        successors += move_check(state,j,i,'R')
             else:
                 # No red piece in current row
                 continue
@@ -98,12 +99,14 @@ def generate_successors(state, curr_turn):
                     if state.board[i][j] == '.':
                         continue
                     elif state.board[i][j] == 'b':
-                        move_check(state,j,i,'b')
+                        successors += move_check(state,j,i,'b')
                     elif state.board[i][j] == 'B':
-                        move_check(state,j,i,'B')
+                        successors += move_check(state,j,i,'B')
             else:
                 # No black piece in current row
                 continue
+    
+    return successors
 
 def move_check(state, x, y, player):
     '''Given the (x,y) coords of the piece of interest, see what moves are possible. If a jump is possible, use recursion within move function to check for multiple jumps
