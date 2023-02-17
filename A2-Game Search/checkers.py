@@ -122,23 +122,20 @@ def move_check(state, x, y, player):
             # if not at first column, check diagonal left
             if state.board[y-1][x-1] in opps:
                 # check for jump left
-                successor_board = copy.deepcopy(state.board)
-                successors += move_piece(successor_board, (y,x), (y-1,x-1), jump_cond=True, dir='up_left')
+                '''JUMP FUNCTION FOR FIRST JUMP -- TRY TO DO FIRST JUMP, IF IT CAN'T RETURN NONE, OTHERWISE RETURN NEW BOARD STATE AND CALL MOVE_PIECE'''
+                successors += move_piece(state, (y,x), (y-1,x-1), jump_cond=True, dir='up_left')
             elif state.board[y-1][x-1] == '.':
                 # left diagonal must be empty space
-                successor_board = copy.deepcopy(state.board)
-                successors += move_piece(successor_board, (y,x), (y-1,x-1), jump_cond=False, dir='up_left')
+                successors += move_piece(state, (y,x), (y-1,x-1), jump_cond=False, dir='up_left')
         
         if x != 7:
             # if not at last column, check diagonal right
             if state.board[y-1][x+1] in opps:
                 # check for jump right
-                successor_board = copy.deepcopy(state.board)
-                successors += move_piece(successor_board, (y,x), (y-1,x+1), jump_cond=True, dir='up_right')
+                successors += move_piece(state, (y,x), (y-1,x+1), jump_cond=True, dir='up_right')
             elif state.board[y-1][x+1] == '.':
                 # right diagonal must be empty space
-                successor_board = copy.deepcopy(state.board)
-                successors += move_piece(successor_board, (y,x), (y-1,x+1), jump_cond=False, dir='up_right')
+                successors += move_piece(state, (y,x), (y-1,x+1), jump_cond=False, dir='up_right')
 
     elif player == 'R':
         if x == 0:
@@ -147,39 +144,31 @@ def move_check(state, x, y, player):
                 # if R is also in the first row -- can only move down and to the right
                 if state.board[y+1][x+1] in opps:
                     # check for jump
-                    successor_board = copy.deepcopy(state.board)
-                    successors += move_piece(successor_board, (y,x), (y+1,x+1), jump_cond=True, dir='down_right')
+                    successors += move_piece(state, (y,x), (y+1,x+1), jump_cond=True, dir='down_right')
                 elif state.board[y+1][x+1] == '.':
                     # right diagonal must be empty space
-                    successor_board = copy.deepcopy(state.board)
-                    successors += move_piece(successor_board, (y,x), (y+1,x+1), jump_cond=False, dir='down_right')
+                    successors += move_piece(state, (y,x), (y+1,x+1), jump_cond=False, dir='down_right')
             elif y == 7:
                 # if R is in last row -- can only move up and to the right
                 if state.board[y-1][x+1] in opps:
                     # check for jump
-                    successor_board = copy.deepcopy(state.board)
-                    successors += move_piece(successor_board, (y,x), (y-1,x+1), jump_cond=True, dir='up_right')
+                    successors += move_piece(state, (y,x), (y-1,x+1), jump_cond=True, dir='up_right')
                 elif state.board[y-1][x+1] == '.':
                     # right diagonal must be empty space
-                    successor_board = copy.deepcopy(state.board)
-                    successors += move_piece(successor_board, (y,x), (y-1,x+1), jump_cond=False, dir='up_right')
+                    successors += move_piece(state, (y,x), (y-1,x+1), jump_cond=False, dir='up_right')
             else:
                 # can move in two diagonal directions to the RIGHT
                 if state.board[y-1][x+1] in opps:
                     # check for jump
-                    successor_board = copy.deepcopy(state.board)
-                    successors += move_piece(successor_board, (y,x), (y-1,x+1), jump_cond=True, dir='up_right')
+                    successors += move_piece(state, (y,x), (y-1,x+1), jump_cond=True, dir='up_right')
                 elif state.board[y-1][x+1] == '.':
-                    successor_board = copy.deepcopy(state.board)
-                    successors += move_piece(successor_board, (y,x), (y-1,x+1), jump_cond=False, dir='up_right') 
+                    successors += move_piece(state, (y,x), (y-1,x+1), jump_cond=False, dir='up_right') 
 
                 if state.board[y+1][x+1] in opps:
                     # check for jump
-                    successor_board = copy.deepcopy(state.board)
-                    successors += move_piece(successor_board, (y,x), (y+1,x+1), jump_cond=True, dir='down_right')
+                    successors += move_piece(state, (y,x), (y+1,x+1), jump_cond=True, dir='down_right')
                 elif state.board[y+1][x+1] == '.':
-                    successor_board = copy.deepcopy(state.board)
-                    successors += move_piece(successor_board, (y,x), (y+1,x+1), jump_cond=False, dir='down_right')               
+                    successors += move_piece(state, (y,x), (y+1,x+1), jump_cond=False, dir='down_right')               
 
         elif x == 7:
             # if R is in the last column
@@ -187,123 +176,115 @@ def move_check(state, x, y, player):
                 # if R is also in the first row -- can only move down and to the left
                 if state.board[y+1][x-1] in opps:
                     # check for jump
-                    successor_board = copy.deepcopy(state.board)
-                    successors += move_piece(successor_board, (y,x), (y+1,x-1), jump_cond=True, dir='down_left')
+                    successors += move_piece(state, (y,x), (y+1,x-1), jump_cond=True, dir='down_left')
                 elif state.board[y+1][x-1] == '.':
                     # left diagonal must be empty space
-                    successor_board = copy.deepcopy(state.board)
-                    successors += move_piece(successor_board, (y,x), (y+1,x-1), jump_cond=False, dir='down_left')
+                    successors += move_piece(state, (y,x), (y+1,x-1), jump_cond=False, dir='down_left')
             elif y == 7:
                 # if R is in last row -- can only move up and to the left
                 if state.board[y-1][x-1] in opps:
                     # check for jump
-                    successor_board = copy.deepcopy(state.board)
-                    successors += move_piece(successor_board, (y,x), (y-1,x-1), jump_cond=True, dir='up_left')
+                    successors += move_piece(state, (y,x), (y-1,x-1), jump_cond=True, dir='up_left')
                 elif state.board[y-1][x-1] == '.':
                     # left diagonal must be empty space
-                    successor_board = copy.deepcopy(state.board)
-                    successors += move_piece(successor_board, (y,x), (y-1,x-1), jump_cond=False, dir='up_left')
+                    successors += move_piece(state, (y,x), (y-1,x-1), jump_cond=False, dir='up_left')
             else:
                 # can move in two diagonal directions to the LEFT
                 if state.board[y-1][x-1] in opps:
                     # check for jump
-                    successor_board = copy.deepcopy(state.board)
-                    successors += move_piece(successor_board, (y,x), (y-1,x-1), jump_cond=True, dir='up_left')
+                    successors += move_piece(state, (y,x), (y-1,x-1), jump_cond=True, dir='up_left')
                 elif state.board[y-1][x-1] == '.':
-                    successor_board = copy.deepcopy(state.board)
-                    successors += move_piece(successor_board, (y,x), (y-1,x-1), jump_cond=False, dir='up_left') 
+                    successors += move_piece(state, (y,x), (y-1,x-1), jump_cond=False, dir='up_left') 
                 
                 if state.board[y+1][x-1] in opps:
                     # check for jump
-                    successor_board = copy.deepcopy(state.board)
-                    successors += move_piece(successor_board, (y,x), (y+1,x-1), jump_cond=True, dir='down_left')
+                    successors += move_piece(state, (y,x), (y+1,x-1), jump_cond=True, dir='down_left')
                 elif state.board[y+1][x-1] == '.':
-                    successor_board = copy.deepcopy(state.board)
-                    successors += move_piece(successor_board, (y,x), (y+1,x-1), jump_cond=False, dir='down_left')
+                    successors += move_piece(state, (y,x), (y+1,x-1), jump_cond=False, dir='down_left')
 
         elif y == 0:
             # not in first or last column, but in top row -- can only move down in two directions
             if state.board[y+1][x-1] in opps:
                 # check for jump
-                successor_board = copy.deepcopy(state.board)
-                successors += move_piece(successor_board, (y,x), (y+1,x-1), jump_cond=True, dir='down_left')
+                successors += move_piece(state, (y,x), (y+1,x-1), jump_cond=True, dir='down_left')
             elif state.board[y+1][x-1] == '.':
-                successor_board = copy.deepcopy(state.board)
-                successors += move_piece(successor_board, (y,x), (y+1,x-1), jump_cond=False, dir='down_left') 
+                successors += move_piece(state, (y,x), (y+1,x-1), jump_cond=False, dir='down_left') 
 
             if state.board[y+1][x+1] in opps:
                 # check for jump
-                successor_board = copy.deepcopy(state.board)
-                successors += move_piece(successor_board, (y,x), (y+1,x+1), jump_cond=True, dir='down_right')
+                successors += move_piece(state, (y,x), (y+1,x+1), jump_cond=True, dir='down_right')
             elif state.board[y+1][x+1] == '.':
-                successor_board = copy.deepcopy(state.board)
-                successors += move_piece(successor_board, (y,x), (y+1,x+1), jump_cond=False, dir='down_right')
+                successors += move_piece(state, (y,x), (y+1,x+1), jump_cond=False, dir='down_right')
 
         elif y == 7:
             # not in first or last column, but in last row -- can only move up in two directions
             if state.board[y-1][x-1] in opps:
                 # check for jump
-                successor_board = copy.deepcopy(state.board)
-                successors += move_piece(successor_board, (y,x), (y-1,x-1), jump_cond=True, dir='up_left')
+                successors += move_piece(state, (y,x), (y-1,x-1), jump_cond=True, dir='up_left')
             elif state.board[y-1][x-1] == '.':
-                successor_board = copy.deepcopy(state.board)
-                successors += move_piece(successor_board, (y,x), (y-1,x-1), jump_cond=False, dir='up_left') 
+                successors += move_piece(state, (y,x), (y-1,x-1), jump_cond=False, dir='up_left') 
 
             if state.board[y-1][x+1] in opps:
                 # check for jump
-                successor_board = copy.deepcopy(state.board)
-                successors += move_piece(successor_board, (y,x), (y-1,x+1), jump_cond=True, dir='up_right')
+                successors += move_piece(state, (y,x), (y-1,x+1), jump_cond=True, dir='up_right')
             elif state.board[y-1][x+1] == '.':
-                successor_board = copy.deepcopy(state.board)
-                successors += move_piece(successor_board, (y,x), (y-1,x+1), jump_cond=False, dir='up_right')
+                successors += move_piece(state, (y,x), (y-1,x+1), jump_cond=False, dir='up_right')
 
         else:
             # at a position where the piece can move in any 4 directions
             # UP_LEFT
             if state.board[y-1][x-1] in opps:
                 # check for jump
-                successor_board = copy.deepcopy(state.board)
-                successors += move_piece(successor_board, (y,x), (y-1,x-1), jump_cond=True, dir='up_left')
+                successors += move_piece(state, (y,x), (y-1,x-1), jump_cond=True, dir='up_left')
             elif state.board[y-1][x-1] == '.':
-                successor_board = copy.deepcopy(state.board)
-                successors += move_piece(successor_board, (y,x), (y-1,x-1), jump_cond=False, dir='up_left') 
+                successors += move_piece(state, (y,x), (y-1,x-1), jump_cond=False, dir='up_left') 
             # UP_RIGHT
             if state.board[y-1][x+1] in opps:
                 # check for jump
-                successor_board = copy.deepcopy(state.board)
-                successors += move_piece(successor_board, (y,x), (y-1,x+1), jump_cond=True, dir='up_right')
+                successors += move_piece(state, (y,x), (y-1,x+1), jump_cond=True, dir='up_right')
             elif state.board[y-1][x+1] == '.':
-                successor_board = copy.deepcopy(state.board)
-                successors += move_piece(successor_board, (y,x), (y-1,x+1), jump_cond=False, dir='up_right')
+                successors += move_piece(state, (y,x), (y-1,x+1), jump_cond=False, dir='up_right')
             # DOWN_LEFT
             if state.board[y+1][x-1] in opps:
                 # check for jump
-                successor_board = copy.deepcopy(state.board)
-                successors += move_piece(successor_board, (y,x), (y+1,x-1), jump_cond=True, dir='down_left')
+                successors += move_piece(state, (y,x), (y+1,x-1), jump_cond=True, dir='down_left')
             elif state.board[y+1][x-1] == '.':
-                successor_board = copy.deepcopy(state.board)
-                successors += move_piece(successor_board, (y,x), (y+1,x-1), jump_cond=False, dir='down_left') 
+                successors += move_piece(state, (y,x), (y+1,x-1), jump_cond=False, dir='down_left') 
             # DOWN_RIGHT
             if state.board[y+1][x+1] in opps:
                 # check for jump
-                successor_board = copy.deepcopy(state.board)
-                successors += move_piece(successor_board, (y,x), (y+1,x+1), jump_cond=True, dir='down_right')
+                successors += move_piece(state, (y,x), (y+1,x+1), jump_cond=True, dir='down_right')
             elif state.board[y+1][x+1] == '.':
-                successor_board = copy.deepcopy(state.board)
-                successors += move_piece(successor_board, (y,x), (y+1,x+1), jump_cond=False, dir='down_right')                       
+                successors += move_piece(state, (y,x), (y+1,x+1), jump_cond=False, dir='down_right')                       
 
     elif player == 'b':
         pass
 
-def move_piece(successor_board, piece_loc, move_loc, jump_cond, dir):
+def first_jump(state, piece_loc, move_loc, jump_cond, dir):
+    '''Check if first jump can be made, if it can then complete the first jump'''
+    pass
+
+def move_piece(state, piece_loc, move_loc, jump_cond, dir):
     '''Using move tuple, move piece to location. Then, if a jump occured, check if multiple jumps can occur and execute using recursion'''
     
+    successor_board = copy.deepcopy(state.board)
     piece = successor_board[piece_loc[0]][piece_loc[1]]
 
     if jump_cond == True:
-        # an opponent piece is to the diagonal of this piece; check if jump can be made and if it can, enter recursion
-        '''ENTER DIR CONDITIONALS'''
-        pass
+        # an opponent piece is to the diagonal of this piece; check if jump can be made again and if it can, enter recursion
+        if dir == 'up_right':
+            if move_loc[0] != 0 or move_loc[1] != 7:
+                if successor_board[move_loc[0]-1][move_loc[1]+1] == '.':
+                    # jump can be made again
+                    pass
+                else:
+                    return state
+        elif dir == 'up_left':
+            pass
+        elif dir == 'down_right':
+            pass
+        elif dir == 'down_left':
+            pass
     else:
         # moving to an empty space
         # change piece initial position to '.'

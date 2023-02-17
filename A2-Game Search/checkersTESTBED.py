@@ -6,7 +6,8 @@ print(a)
 
 def test():
     c = [1,2,3]
-    return [c]
+    return None
 
-a += test()
+a.append(test())
 print(a)
+
