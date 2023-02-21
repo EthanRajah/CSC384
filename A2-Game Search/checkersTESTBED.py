@@ -18,10 +18,10 @@ e = [[11,22,33],[44,55,66]]
 d += e
 print(d)
 
-def rec(a):
+def rec(a, res):
     if a == 10:
         return 21
     else:
-        return rec(a+1)
+        res += rec(a+1, res)
 
-print(rec(a=1))
+print(rec(a=1, res=[]))

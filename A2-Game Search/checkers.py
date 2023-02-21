@@ -70,7 +70,7 @@ def simulate(state, first_turn):
         successors = generate_successors(state, curr_turn)
         # Choose from possible successors
         break
-    print(successors[6].board)
+    print(successors[7].board)
 
 def generate_successors(state, curr_turn):
     '''Determine if particular movement (single move or jump(s)) are possible. If jumps are possible, it must be done.
@@ -323,7 +323,7 @@ def first_jump(state, piece_loc, move_loc, dir):
     '''Check if first jump can be made, if it can then complete the first jump'''
     # since diagonal piece is opponent, lets check if we can do another move in the same direction diagonally to complete jump
     if dir == 'up_right':
-        if move_loc[0] != 0 or move_loc[1] != 7:
+        if move_loc[0] != 0 and move_loc[1] != 7:
             if state.board[move_loc[0]-1][move_loc[1]+1] == '.':
                 # jump can be made 
                 successor_board = copy.deepcopy(state.board)
@@ -341,7 +341,7 @@ def first_jump(state, piece_loc, move_loc, dir):
             else:
                 return [None]
     elif dir == 'up_left':
-        if move_loc[0] != 0 or move_loc[1] != 0:
+        if move_loc[0] != 0 and move_loc[1] != 0:
             if state.board[move_loc[0]-1][move_loc[1]-1] == '.':
                 # jump can be made 
                 successor_board = copy.deepcopy(state.board)
@@ -360,7 +360,7 @@ def first_jump(state, piece_loc, move_loc, dir):
                 return [None]
 
     elif dir == 'down_right':
-        if move_loc[0] != 7 or move_loc[1] != 7:
+        if move_loc[0] != 7 and move_loc[1] != 7:
             if state.board[move_loc[0]+1][move_loc[1]+1] == '.':
                 # jump can be made 
                 successor_board = copy.deepcopy(state.board)
@@ -378,7 +378,7 @@ def first_jump(state, piece_loc, move_loc, dir):
             else:
                 return [None]
     elif dir == 'down_left':
-        if move_loc[0] != 7 or move_loc[1] != 0:
+        if move_loc[0] != 7 and move_loc[1] != 0:
             if state.board[move_loc[0]+1][move_loc[1]-1] == '.':
                 # jump can be made 
                 successor_board = copy.deepcopy(state.board)
@@ -404,25 +404,32 @@ def multi_jump(state, piece_loc, successors):
     x = piece_loc[1]
     y = piece_loc[0]
     opps = get_opp_char(piece)
+    failed = 0
 
     if piece == 'r':
         # UP_LEFT
         if (x-2) >= 0 and (y-2) >= 0:
             if state.board[y-1][x-1] in opps:
-                print("HERE")
                 new_state = first_jump(state, (y,x), (y-1,x-1), dir='up_left')
-                successor = multi_jump(new_state, (y-2,x-2), successors)
-                successors += successor
+                multi_jump(new_state, (y-2,x-2), successors)
+            else:
+                failed += 1
+        else:
+            failed += 1
         
         # UP_RIGHT
         if (x+2) <= 7 and (y-2) >= 0:
             if state.board[y-1][x+1] in opps:
-                print("HERE2")
                 new_state = first_jump(state, (y,x), (y-1,x+1), dir='up_right')
-                successor = multi_jump(new_state, (y-2,x+2), successors)
-                successors += successor
+                multi_jump(new_state, (y-2,x+2), successors)
             else:
-                return [state]
+                failed += 1
+        else:
+            failed += 1
+
+        if failed == 2:
+            successors += [state]
+            return [state]
         else:
             return [state]
    
@@ -431,31 +438,45 @@ def multi_jump(state, piece_loc, successors):
         if (x-2) >= 0 and (y-2) >= 0:
             if state.board[y-1][x-1] in opps:
                 new_state = first_jump(state, (y,x), (y-1,x-1), dir='up_left')
-                successor = multi_jump(new_state, (y-2,x-2), successors)
-                successors += successor
+                multi_jump(new_state, (y-2,x-2), successors)
+            else:
+                failed += 1
+        else:
+            failed += 1
         
         # UP_RIGHT
         if (x+2) <= 7 and (y-2) >= 0:
             if state.board[y-1][x+1] in opps:
                 new_state = first_jump(state, (y,x), (y-1,x+1), dir='up_right')
-                successor = multi_jump(new_state, (y-2,x+2), successors)
-                successors += successor
+                multi_jump(new_state, (y-2,x+2), successors)
+            else:
+                failed += 1
+        else:
+            failed += 1
         
         # DOWN_LEFT
         if (x-2) >= 0 and (y+2) <= 7:
             if state.board[y+1][x-1] in opps:
                 new_state = first_jump(state, (y,x), (y+1,x-1), dir='down_left')
-                successor = multi_jump(new_state, (y+2,x-2), successors)
-                successors += successor
+                multi_jump(new_state, (y+2,x-2), successors)
+            else:
+                failed += 1
+        else:
+            failed += 1
         
         # DOWN_RIGHT
         if (x+2) <= 7 and (y+2) <= 7:
             if state.board[y+1][x+1] in opps:
-                new_state = first_jump(state, (y,x), (y+1,x+1), dir='down_left')
-                successor = multi_jump(new_state, (y+2,x+2), successors)
-                successors += successor
+                new_state = first_jump(state, (y,x), (y+1,x+1), dir='down_right')
+                multi_jump(new_state, (y+2,x+2), successors)
             else:
-                return [state]
+                failed += 1
+        else:
+            failed += 1
+
+        if failed == 4:
+            successors += [state]
+            return [state]
         else:
             return [state]
         
@@ -464,17 +485,25 @@ def multi_jump(state, piece_loc, successors):
         if (x-2) >= 0 and (y+2) <= 7:
             if state.board[y+1][x-1] in opps:
                 new_state = first_jump(state, (y,x), (y+1,x-1), dir='down_left')
-                successor = multi_jump(new_state, (y+2,x-2), successors)
-                successors += successor
+                multi_jump(new_state, (y+2,x-2), successors)
+            else:
+                failed += 1
+        else:
+            failed += 1
         
         # DOWN_RIGHT
         if (x+2) <= 7 and (y+2) <= 7:
             if state.board[y+1][x+1] in opps:
                 new_state = first_jump(state, (y,x), (y+1,x+1), dir='down_left')
-                successor = multi_jump(new_state, (y+2,x+2), successors)
-                successors += successor
+                multi_jump(new_state, (y+2,x+2), successors)
             else:
-                return [state]
+                failed += 1
+        else:
+            failed += 1
+
+        if failed == 2:
+            successors += [state]
+            return [state]
         else:
             return [state]
 
@@ -514,11 +543,10 @@ if __name__ == '__main__':
 
     initial_board = read_from_file(args.inputfile)
     init_state = State(initial_board)
-    turn = 'r'
+    turn = 'b'
     ctr = 0
     simulate(init_state, turn)
 
     sys.stdout = open(args.outputfile, 'w')
 
     sys.stdout = sys.__stdout__
-
