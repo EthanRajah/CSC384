@@ -14,6 +14,10 @@ class State:
 
         self.width = 8
         self.height = 8
+        self.single_jump = False
+        self.multi_jump = False
+        self.switched = False
+        self.eval = 0
 
     def display(self):
         for i in self.board:
@@ -21,19 +25,106 @@ class State:
                 print(j, end="")
             print("")
         print("")
-    
-    def compute_utility(self):
-        '''Determine player's utility of TERMINAL state'''
-        pass
 
-    def eval_fnc(self):
-        '''Estimate player's utility of NON TERMINAL state'''
-        pass
-
-    def is_goal(self):
+    def is_goal_max(self):
         '''Determine if board is a winner/goal state for MAX'''
         for i in range(len(self.board)):
             if 'b' in self.board[i]:
+                return False
+            else:
+                continue
+        return True
+    
+    def compute_utility(self, player):
+        '''Determine player's utility of TERMINAL state'''
+        # Return +inf for winner, -inf for loser
+        if self.is_goal_max() == True:
+            if player == 'r':
+                return 100000
+            else:
+                return -100000
+        elif self.is_goal_min() == True:
+            if player == 'r':
+                return -100000
+            else:
+                return 100000
+        else:
+            return 0
+
+    def eval_fnc(self, player):
+        '''Estimate player's utility of NON TERMINAL state'''
+        # Evaluate based on number of pieces player has vs the other player, as well as the 
+        # number of player pieces that are more advanced on the board vs the other player and number of safe from capture pieces vs other player
+        opps = get_opp_char(player)
+        if player == 'r':
+            p = ['r', 'R']
+        else:
+            p = ['b', 'B']
+
+        utility = self.compute_utility(player)
+        eval = 0
+        if utility == 100000 or utility == -100000:
+            self.eval = utility
+        else:
+            for i in range(self.height):
+                for j in range(self.width):
+                    if i == 0 or i == 7 or j == 0 or j == 7:
+                        # if at any of the safe from capture places (along edges)
+                        if self.board[i][j] in p:
+                            eval += 1
+                            if self.board[i][j] == p[1]:
+                                # King piece
+                                eval += 2
+                            elif self.board[i][j] == p[0]:
+                                eval += 1
+                        elif self.board[i][j] in opps:
+                            eval -= 1
+                            if self.board[i][j] == opps[1]:
+                                # King piece
+                                eval -= 2
+                            elif self.board[i][j] == opps[0]:
+                                eval -= 1
+                        
+                        # Red: prefer in top half of board. Black: prefer at bottom half 
+                        if 'r' in p:
+                            if self.board[i][j] in p:
+                                eval += (7-i)
+                            elif self.board[i][j] in opps:
+                                eval -= i
+                        elif 'b' in p:
+                            if self.board[i][j] in p:
+                                eval += i
+                            elif self.board[i][j] in opps:
+                                eval -= (7-i)                      
+
+                    else:
+                        # Not at edges
+                        if self.board[i][j] == p[0]:
+                            eval += 1
+                        elif self.board[i][j] == p[1]:
+                            eval += 2
+                        elif self.board[i][j] == opps[0]:
+                            eval -= 1
+                        elif self.board[i][j] == opps[1]:
+                            eval -= 2
+
+                        if 'r' in p:
+                            if self.board[i][j] in p:
+                                eval += (7-i)
+                            elif self.board[i][j] in opps:
+                                eval -= i
+                        elif 'b' in p:
+                            if self.board[i][j] in p:
+                                eval += i
+                            elif self.board[i][j] in opps:
+                                eval -= (7-i)  
+            
+            self.eval = eval
+
+    def is_goal_min(self):
+        '''Determine if board is a winner/goal state for MIN'''
+        for i in range(len(self.board)):
+            if 'r' in self.board[i]:
                 return False
             else:
                 continue
@@ -61,16 +152,34 @@ def read_from_file(filename):
 
     return board
 
-def simulate(state, first_turn):
-    '''Beginning with the initial board state, simulate the checkers game'''
-    # Red always starts first
-    curr_turn = first_turn
-    while state.is_goal() == False:
-        # while the are still black pieces on the board, keep playing
-        successors = generate_successors(state, curr_turn)
-        # Choose from possible successors
-        break
-    print(successors[7].board)
+def simulate_successors(state, turn, dec):
+    '''Get successors for current state by generating successors and filtering them based on jumps'''
+    
+    successors_jump = []
+    successors_multi_jumps = []
+
+    successors = generate_successors(state, turn)
+    # Choose from possible successors
+    # If we can jump, we must
+    for successor in successors:
+        if successor.single_jump == True:
+            successors_jump += successor
+            if successor.multi_jump == True:
+                successors_multi_jumps += successor
+    
+    # If multi jump list is not empty, go with it. Else, if jump list is not empty, go with that list. Otherwise, stick to current successors list
+    if successors_multi_jumps != []:
+        successors = successors_multi_jumps
+    elif successors_jump != []:
+        successors = successors_jump
+    
+    # Node Ordering
+    if dec == 'max':
+        successors.sort(key=lambda x: x.eval, reverse=True)
+    else:
+        successors.sort(key=lambda x: x.eval)
+
+    return successors
 
 def generate_successors(state, curr_turn):
     '''Determine if particular movement (single move or jump(s)) are possible. If jumps are possible, it must be done.
@@ -125,8 +234,10 @@ def move_check(state, x, y, player):
             if state.board[y-1][x-1] in opps:
                 # check for jump left
                 pos_state = first_jump(state, (y,x), (y-1,x-1), dir='up_left')
-                if pos_state != None:
-                    multi_jump(pos_state, (y-2,x-2), successors) 
+                if pos_state != None and pos_state[0].switched == False:
+                    multi_jump(pos_state, (y-2,x-2), successors)
+                elif pos_state != None and pos_state[0].switched == True:
+                    successors += pos_state 
             elif state.board[y-1][x-1] == '.':
                 # left diagonal must be empty space
                 successors += move_piece(state, (y,x), (y-1,x-1))
@@ -135,8 +246,10 @@ def move_check(state, x, y, player):
             if state.board[y-1][x+1] in opps:
                 # check for jump right
                 pos_state = first_jump(state, (y,x), (y-1,x+1), dir='up_right')
-                if pos_state != None:
+                if pos_state != None and pos_state[0].switched == False:
                     multi_jump(pos_state, (y-2,x+2), successors)
+                elif pos_state != None and pos_state[0].switched == True:
+                    successors += pos_state
             elif state.board[y-1][x+1] == '.':
                 # right diagonal must be empty space
                 successors += move_piece(state, (y,x), (y-1,x+1))
@@ -149,8 +262,10 @@ def move_check(state, x, y, player):
                 if state.board[y+1][x+1] in opps:
                     # check for jump
                     pos_state = first_jump(state, (y,x), (y+1,x+1), dir='down_right')
-                    if pos_state != None:
+                    if pos_state != None and pos_state[0].switched == False:
                         multi_jump(pos_state, (y+2,x+2), successors)
+                    elif pos_state != None and pos_state[0].switched == True:
+                        successors += pos_state
                 elif state.board[y+1][x+1] == '.':
                     # right diagonal must be empty space
                     successors += move_piece(state, (y,x), (y+1,x+1))
@@ -159,8 +274,10 @@ def move_check(state, x, y, player):
                 if state.board[y-1][x+1] in opps:
                     # check for jump
                     pos_state = first_jump(state, (y,x), (y-1,x+1), dir='up_right')
-                    if pos_state != None:
+                    if pos_state != None and pos_state[0].switched == False:
                         multi_jump(pos_state, (y-2,x+2), successors)
+                    elif pos_state != None and pos_state[0].switched == True:
+                        successors += pos_state
                 elif state.board[y-1][x+1] == '.':
                     # right diagonal must be empty space
                     successors += move_piece(state, (y,x), (y-1,x+1))
@@ -169,16 +286,20 @@ def move_check(state, x, y, player):
                 if state.board[y-1][x+1] in opps:
                     # check for jump
                     pos_state = first_jump(state, (y,x), (y-1,x+1), dir='up_right')
-                    if pos_state != None:
+                    if pos_state != None and pos_state[0].switched == False:
                         multi_jump(pos_state, (y-2,x+2), successors)
+                    elif pos_state != None and pos_state[0].switched == True:
+                        successors += pos_state
                 elif state.board[y-1][x+1] == '.':
                     successors += move_piece(state, (y,x), (y-1,x+1)) 
 
                 if state.board[y+1][x+1] in opps:
                     # check for jump
                     pos_state = first_jump(state, (y,x), (y+1,x+1), dir='down_right')
-                    if pos_state != None:
+                    if pos_state != None and pos_state[0].switched == False:
                         multi_jump(pos_state, (y+2,x+2), successors)
+                    elif pos_state != None and pos_state[0].switched == True:
+                        successors += pos_state
                 elif state.board[y+1][x+1] == '.':
                     successors += move_piece(state, (y,x), (y+1,x+1))               
 
@@ -189,8 +310,10 @@ def move_check(state, x, y, player):
                 if state.board[y+1][x-1] in opps:
                     # check for jump
                     pos_state = first_jump(state, (y,x), (y+1,x-1), dir='down_left')
-                    if pos_state != None:
+                    if pos_state != None and pos_state[0].switched == False:
                         multi_jump(pos_state, (y+2,x-2), successors)
+                    elif pos_state != None and pos_state[0].switched == True:
+                        successors += pos_state
                 elif state.board[y+1][x-1] == '.':
                     # left diagonal must be empty space
                     successors += move_piece(state, (y,x), (y+1,x-1))
@@ -199,8 +322,10 @@ def move_check(state, x, y, player):
                 if state.board[y-1][x-1] in opps:
                     # check for jump
                     pos_state = first_jump(state, (y,x), (y-1,x-1), dir='up_left')
-                    if pos_state != None:
+                    if pos_state != None and pos_state[0].switched == False:
                         multi_jump(pos_state, (y-2,x-2), successors)
+                    elif pos_state != None and pos_state[0].switched == True:
+                        successors += pos_state
                 elif state.board[y-1][x-1] == '.':
                     # left diagonal must be empty space
                     successors += move_piece(state, (y,x), (y-1,x-1))
@@ -209,16 +334,20 @@ def move_check(state, x, y, player):
                 if state.board[y-1][x-1] in opps:
                     # check for jump
                     pos_state = first_jump(state, (y,x), (y-1,x-1), dir='up_left')
-                    if pos_state != None:
+                    if pos_state != None and pos_state[0].switched == False:
                         multi_jump(pos_state, (y-2,x-2), successors)
+                    elif pos_state != None and pos_state[0].switched == True:
+                        successors += pos_state
                 elif state.board[y-1][x-1] == '.':
                     successors += move_piece(state, (y,x), (y-1,x-1)) 
                 
                 if state.board[y+1][x-1] in opps:
                     # check for jump
                     pos_state = first_jump(state, (y,x), (y+1,x-1), dir='down_left')
-                    if pos_state != None:
+                    if pos_state != None and pos_state[0].switched == False:
                         multi_jump(pos_state, (y+2,x-2), successors)
+                    elif pos_state != None and pos_state[0].switched == True:
+                        successors += pos_state
                 elif state.board[y+1][x-1] == '.':
                     successors += move_piece(state, (y,x), (y+1,x-1))
 
@@ -227,17 +356,20 @@ def move_check(state, x, y, player):
             if state.board[y+1][x-1] in opps:
                 # check for jump
                 pos_state = first_jump(state, (y,x), (y+1,x-1), dir='down_left')
-                if pos_state != None:
+                if pos_state != None and pos_state[0].switched == False:
                     multi_jump(pos_state, (y+2,x-2), successors)
-                    return successors
+                elif pos_state != None and pos_state[0].switched == True:
+                    successors += pos_state
             elif state.board[y+1][x-1] == '.':
                 successors += move_piece(state, (y,x), (y+1,x-1)) 
 
             if state.board[y+1][x+1] in opps:
                 # check for jump
                 pos_state = first_jump(state, (y,x), (y+1,x+1), dir='down_right')
-                if pos_state != None:
+                if pos_state != None and pos_state[0].switched == False:
                     multi_jump(pos_state, (y+2,x+2), successors)
+                elif pos_state != None and pos_state[0].switched == True:
+                    successors += pos_state
             elif state.board[y+1][x+1] == '.':
                 successors += move_piece(state, (y,x), (y+1,x+1))
 
@@ -246,16 +378,20 @@ def move_check(state, x, y, player):
             if state.board[y-1][x-1] in opps:
                 # check for jump
                 pos_state = first_jump(state, (y,x), (y-1,x-1), dir='up_left')
-                if pos_state != None:
+                if pos_state != None and pos_state[0].switched == False:
                     multi_jump(pos_state, (y-2,x-2), successors)
+                elif pos_state != None and pos_state[0].switched == True:
+                    successors += pos_state
             elif state.board[y-1][x-1] == '.':
                 successors += move_piece(state, (y,x), (y-1,x-1)) 
 
             if state.board[y-1][x+1] in opps:
                 # check for jump
                 pos_state = first_jump(state, (y,x), (y-1,x+1), dir='up_right')
-                if pos_state != None:
+                if pos_state != None and pos_state[0].switched == False:
                     multi_jump(pos_state, (y-2,x+2), successors)
+                elif pos_state != None and pos_state[0].switched == True:
+                    successors += pos_state
             elif state.board[y-1][x+1] == '.':
                 successors += move_piece(state, (y,x), (y-1,x+1))
 
@@ -265,32 +401,40 @@ def move_check(state, x, y, player):
             if state.board[y-1][x-1] in opps:
                 # check for jump
                 pos_state = first_jump(state, (y,x), (y-1,x-1), dir='up_left')
-                if pos_state != None:
+                if pos_state != None and pos_state[0].switched == False:
                     multi_jump(pos_state, (y-2,x-2), successors)
+                elif pos_state != None and pos_state[0].switched == True:
+                    successors += pos_state
             elif state.board[y-1][x-1] == '.':
                 successors += move_piece(state, (y,x), (y-1,x-1)) 
             # UP_RIGHT
             if state.board[y-1][x+1] in opps:
                 # check for jump
                 pos_state = first_jump(state, (y,x), (y-1,x+1), dir='up_right')
-                if pos_state != None:
+                if pos_state != None and pos_state[0].switched == False:
                     multi_jump(pos_state, (y-2,x+2), successors)
+                elif pos_state != None and pos_state[0].switched == True:
+                    successors += pos_state
             elif state.board[y-1][x+1] == '.':
                 successors += move_piece(state, (y,x), (y-1,x+1))
             # DOWN_LEFT
             if state.board[y+1][x-1] in opps:
                 # check for jump
                 pos_state = first_jump(state, (y,x), (y+1,x-1), dir='down_left')
-                if pos_state != None:
+                if pos_state != None and pos_state[0].switched == False:
                     multi_jump(pos_state, (y+2,x-2), successors)
+                elif pos_state != None and pos_state[0].switched == True:
+                    successors += pos_state
             elif state.board[y+1][x-1] == '.':
                 successors += move_piece(state, (y,x), (y+1,x-1)) 
             # DOWN_RIGHT
             if state.board[y+1][x+1] in opps:
                 # check for jump
                 pos_state = first_jump(state, (y,x), (y+1,x+1), dir='down_right')
-                if pos_state != None:
+                if pos_state != None and pos_state[0].switched == False:
                     multi_jump(pos_state, (y+2,x+2), successors)
+                elif pos_state != None and pos_state[0].switched == True:
+                    successors += pos_state
             elif state.board[y+1][x+1] == '.':
                 successors += move_piece(state, (y,x), (y+1,x+1))
     
@@ -301,8 +445,10 @@ def move_check(state, x, y, player):
             if state.board[y+1][x-1] in opps:
                 # check for jump left
                 pos_state = first_jump(state, (y,x), (y+1,x-1), dir='down_left')
-                if pos_state != None:
+                if pos_state != None and pos_state[0].switched == False:
                     multi_jump(pos_state, (y+2,x-2), successors) 
+                elif pos_state != None and pos_state[0].switched == True:
+                    successors += pos_state
             elif state.board[y+1][x-1] == '.':
                 # left diagonal must be empty space
                 successors += move_piece(state, (y,x), (y+1,x-1))
@@ -311,8 +457,10 @@ def move_check(state, x, y, player):
             if state.board[y+1][x+1] in opps:
                 # check for jump right
                 pos_state = first_jump(state, (y,x), (y+1,x+1), dir='down_right')
-                if pos_state != None:
+                if pos_state != None and pos_state[0].switched == False:
                     multi_jump(pos_state, (y+2,x+2), successors)
+                elif pos_state != None and pos_state[0].switched == True:
+                    successors += pos_state
             elif state.board[y-1][x+1] == '.':
                 # right diagonal must be empty space
                 successors += move_piece(state, (y,x), (y+1,x+1))
@@ -322,6 +470,7 @@ def move_check(state, x, y, player):
 def first_jump(state, piece_loc, move_loc, dir):
     '''Check if first jump can be made, if it can then complete the first jump'''
     # since diagonal piece is opponent, lets check if we can do another move in the same direction diagonally to complete jump
+    switch = 0
     if dir == 'up_right':
         if move_loc[0] != 0 and move_loc[1] != 7:
             if state.board[move_loc[0]-1][move_loc[1]+1] == '.':
@@ -334,12 +483,16 @@ def first_jump(state, piece_loc, move_loc, dir):
                 # Set new location
                 if (move_loc[0]-1) == 0 and piece == 'r':
                     successor_board[move_loc[0]-1][move_loc[1]+1] = 'R'
+                    switch = 1
                 else:
                     successor_board[move_loc[0]-1][move_loc[1]+1] = piece
                 new_state = State(successor_board)
+                new_state.single_jump = True
+                if switch == 1:
+                    new_state.switched = True
                 return [new_state]
             else:
-                return [None]
+                return None
     elif dir == 'up_left':
         if move_loc[0] != 0 and move_loc[1] != 0:
             if state.board[move_loc[0]-1][move_loc[1]-1] == '.':
@@ -352,12 +505,16 @@ def first_jump(state, piece_loc, move_loc, dir):
                 # Set new location
                 if (move_loc[0]-1) == 0 and piece == 'r':
                     successor_board[move_loc[0]-1][move_loc[1]-1] = 'R'
+                    switch = 1
                 else:
                     successor_board[move_loc[0]-1][move_loc[1]-1] = piece
                 new_state = State(successor_board)
+                new_state.single_jump = True
+                if switch == 1:
+                    new_state.switched = True
                 return [new_state]
             else:
-                return [None]
+                return None
 
     elif dir == 'down_right':
         if move_loc[0] != 7 and move_loc[1] != 7:
@@ -371,12 +528,16 @@ def first_jump(state, piece_loc, move_loc, dir):
                 # Set new location
                 if (move_loc[0]+1) == 7 and piece == 'b':
                     successor_board[move_loc[0]+1][move_loc[1]+1] = 'B'
+                    switch = 1
                 else:
                     successor_board[move_loc[0]+1][move_loc[1]+1] = piece
                 new_state = State(successor_board)
+                new_state.single_jump = True
+                if switch == 1:
+                    new_state.switched = True
                 return [new_state]
             else:
-                return [None]
+                return None
     elif dir == 'down_left':
         if move_loc[0] != 7 and move_loc[1] != 0:
             if state.board[move_loc[0]+1][move_loc[1]-1] == '.':
@@ -389,16 +550,19 @@ def first_jump(state, piece_loc, move_loc, dir):
                 # Set new location
                 if (move_loc[0]+1) == 7 and piece == 'b':
                     successor_board[move_loc[0]+1][move_loc[1]-1] = 'B'
+                    switch = 1
                 else:
                     successor_board[move_loc[0]+1][move_loc[1]-1] = piece
                 new_state = State(successor_board)
+                new_state.single_jump = True
+                if switch == 1:
+                    new_state.switched = True
                 return [new_state]
             else:
-                return [None]
+                return None
 
 def multi_jump(state, piece_loc, successors):
     '''Take a state that has just done one jump and recursively do more if possible'''
-    print(1)
     state = state[0]
     piece = state.board[piece_loc[0]][piece_loc[1]]
     x = piece_loc[1]
@@ -411,7 +575,16 @@ def multi_jump(state, piece_loc, successors):
         if (x-2) >= 0 and (y-2) >= 0:
             if state.board[y-1][x-1] in opps:
                 new_state = first_jump(state, (y,x), (y-1,x-1), dir='up_left')
-                multi_jump(new_state, (y-2,x-2), successors)
+                if new_state != None:
+                    # multi jump successful
+                    if new_state[0].switched == True:
+                        successors += new_state
+                        new_state[0].multi_jump = True
+                    elif state.board != new_state[0].board:
+                        new_state[0].multi_jump = True
+                        multi_jump(new_state, (y-2,x-2), successors)
+                else:
+                    failed += 1
             else:
                 failed += 1
         else:
@@ -421,7 +594,15 @@ def multi_jump(state, piece_loc, successors):
         if (x+2) <= 7 and (y-2) >= 0:
             if state.board[y-1][x+1] in opps:
                 new_state = first_jump(state, (y,x), (y-1,x+1), dir='up_right')
-                multi_jump(new_state, (y-2,x+2), successors)
+                if new_state != None:
+                    if new_state[0].switched == True:
+                        successors += new_state
+                        new_state[0].multi_jump = True
+                    elif state.board != new_state[0].board:
+                        new_state[0].multi_jump = True
+                        multi_jump(new_state, (y-2,x+2), successors)
+                else:
+                    failed += 1
             else:
                 failed += 1
         else:
@@ -438,7 +619,15 @@ def multi_jump(state, piece_loc, successors):
         if (x-2) >= 0 and (y-2) >= 0:
             if state.board[y-1][x-1] in opps:
                 new_state = first_jump(state, (y,x), (y-1,x-1), dir='up_left')
-                multi_jump(new_state, (y-2,x-2), successors)
+                if new_state != None:
+                    if new_state[0].switched == True:
+                        successors += new_state
+                        new_state[0].multi_jump = True
+                    elif state.board != new_state[0].board:
+                        new_state[0].multi_jump = True
+                        multi_jump(new_state, (y-2,x-2), successors)
+                else:
+                    failed += 1
             else:
                 failed += 1
         else:
@@ -448,7 +637,15 @@ def multi_jump(state, piece_loc, successors):
         if (x+2) <= 7 and (y-2) >= 0:
             if state.board[y-1][x+1] in opps:
                 new_state = first_jump(state, (y,x), (y-1,x+1), dir='up_right')
-                multi_jump(new_state, (y-2,x+2), successors)
+                if new_state != None:
+                    if new_state[0].switched == True:
+                        successors += new_state
+                        new_state[0].multi_jump = True
+                    elif state.board != new_state[0].board:
+                        new_state[0].multi_jump = True
+                        multi_jump(new_state, (y-2,x+2), successors)
+                else:
+                    failed += 1
             else:
                 failed += 1
         else:
@@ -458,7 +655,15 @@ def multi_jump(state, piece_loc, successors):
         if (x-2) >= 0 and (y+2) <= 7:
             if state.board[y+1][x-1] in opps:
                 new_state = first_jump(state, (y,x), (y+1,x-1), dir='down_left')
-                multi_jump(new_state, (y+2,x-2), successors)
+                if new_state != None:
+                    if new_state[0].switched == True:
+                        successors += new_state
+                        new_state[0].multi_jump = True
+                    elif state.board != new_state[0].board:
+                        new_state[0].multi_jump = True
+                        multi_jump(new_state, (y+2,x-2), successors)
+                else:
+                    failed += 1
             else:
                 failed += 1
         else:
@@ -468,7 +673,15 @@ def multi_jump(state, piece_loc, successors):
         if (x+2) <= 7 and (y+2) <= 7:
             if state.board[y+1][x+1] in opps:
                 new_state = first_jump(state, (y,x), (y+1,x+1), dir='down_right')
-                multi_jump(new_state, (y+2,x+2), successors)
+                if new_state != None:
+                    if new_state[0].switched == True:
+                        successors += new_state
+                        new_state[0].multi_jump = True
+                    elif state.board != new_state[0].board:
+                        new_state[0].multi_jump = True
+                        multi_jump(new_state, (y+2,x+2), successors)
+                else:
+                    failed += 1
             else:
                 failed += 1
         else:
@@ -485,7 +698,15 @@ def multi_jump(state, piece_loc, successors):
         if (x-2) >= 0 and (y+2) <= 7:
             if state.board[y+1][x-1] in opps:
                 new_state = first_jump(state, (y,x), (y+1,x-1), dir='down_left')
-                multi_jump(new_state, (y+2,x-2), successors)
+                if new_state != None:
+                    if new_state[0].switched == True:
+                        successors += new_state
+                        new_state[0].multi_jump = True
+                    elif state.board != new_state[0].board:
+                        new_state[0].multi_jump = True
+                        multi_jump(new_state, (y+2,x-2), successors)
+                else:
+                    failed += 1
             else:
                 failed += 1
         else:
@@ -494,8 +715,16 @@ def multi_jump(state, piece_loc, successors):
         # DOWN_RIGHT
         if (x+2) <= 7 and (y+2) <= 7:
             if state.board[y+1][x+1] in opps:
-                new_state = first_jump(state, (y,x), (y+1,x+1), dir='down_left')
-                multi_jump(new_state, (y+2,x+2), successors)
+                new_state = first_jump(state, (y,x), (y+1,x+1), dir='down_right')
+                if new_state != None:
+                    if new_state[0].switched == True:
+                        successors += new_state
+                        new_state[0].multi_jump = True
+                    elif state.board != new_state[0].board:
+                        new_state[0].multi_jump = True
+                        multi_jump(new_state, (y+2,x+2), successors)
+                else:
+                    failed += 1
             else:
                 failed += 1
         else:
@@ -523,6 +752,15 @@ def move_piece(state, piece_loc, move_loc):
         successor_board[move_loc[0]][move_loc[1]] = piece
     successor = State(successor_board)
     return [successor]
+
+def alpha_beta_search(state):
+    pass
+
+def max_value(state, alpha, beta, depth):
+    pass
+
+def min_value(state, alpha, beta, depth):
+    pass
 
 if __name__ == '__main__':
 
