@@ -18,6 +18,7 @@ class State:
         self.multi_jump = False
         self.switched = False
         self.eval = 0
+        self.parent = None
 
     def display(self):
         for i in self.board:
@@ -27,9 +28,18 @@ class State:
         print("")
 
     def is_goal_max(self):
-        '''Determine if board is a winner/goal state for MAX'''
-        for i in range(len(self.board)):
-            if 'b' in self.board[i]:
+        '''Determine if board is a winner/goal state for r'''
+        for i in range(self.height):
+            if 'b' in self.board[i] or 'B' in self.board[i]:
+                return False
+            else:
+                continue
+        return True
+    
+    def is_goal_min(self):
+        '''Determine if board is a winner/goal state for b'''
+        for i in range(self.height):
+            if 'r' in self.board[i] or 'R' in self.board[i]:
                 return False
             else:
                 continue
@@ -51,15 +61,24 @@ class State:
         else:
             return 0
 
+    def get_path(self):
+        # Given the goal state is reached, backtrack using the parent values to determine solution path
+        path = []
+        count = 0
+        while self.parent != None:
+            path += [self.board]
+            self = self.parent
+            count += 1
+        path += [self.board]
+        print(count)
+        return path
+
     def eval_fnc(self, player):
         '''Estimate player's utility of NON TERMINAL state'''
         # Evaluate based on number of pieces player has vs the other player, as well as the 
         # number of player pieces that are more advanced on the board vs the other player and number of safe from capture pieces vs other player
-        opps = get_opp_char(player)
-        if player == 'r':
-            p = ['r', 'R']
-        else:
-            p = ['b', 'B']
+        r = ['r', 'R']
+        b = ['b', 'B']
 
         utility = self.compute_utility(player)
         eval = 0
@@ -70,65 +89,44 @@ class State:
                 for j in range(self.width):
                     if i == 0 or i == 7 or j == 0 or j == 7:
                         # if at any of the safe from capture places (along edges)
-                        if self.board[i][j] in p:
+                        if self.board[i][j] in r:
                             eval += 1
-                            if self.board[i][j] == p[1]:
+                            if self.board[i][j] == r[1]:
                                 # King piece
                                 eval += 2
-                            elif self.board[i][j] == p[0]:
+                            elif self.board[i][j] == r[0]:
                                 eval += 1
-                        elif self.board[i][j] in opps:
+                        elif self.board[i][j] in b:
                             eval -= 1
-                            if self.board[i][j] == opps[1]:
+                            if self.board[i][j] == b[1]:
                                 # King piece
                                 eval -= 2
-                            elif self.board[i][j] == opps[0]:
+                            elif self.board[i][j] == b[0]:
                                 eval -= 1
                         
                         # Red: prefer in top half of board. Black: prefer at bottom half 
-                        if 'r' in p:
-                            if self.board[i][j] in p:
-                                eval += (7-i)
-                            elif self.board[i][j] in opps:
-                                eval -= i
-                        elif 'b' in p:
-                            if self.board[i][j] in p:
-                                eval += i
-                            elif self.board[i][j] in opps:
-                                eval -= (7-i)                      
+                        if self.board[i][j] in r:
+                            eval += (7-i)
+                        elif self.board[i][j] in b:
+                            eval -= i                     
 
                     else:
                         # Not at edges
-                        if self.board[i][j] == p[0]:
+                        if self.board[i][j] == r[0]:
                             eval += 1
-                        elif self.board[i][j] == p[1]:
+                        elif self.board[i][j] == r[1]:
                             eval += 2
-                        elif self.board[i][j] == opps[0]:
+                        elif self.board[i][j] == b[0]:
                             eval -= 1
-                        elif self.board[i][j] == opps[1]:
+                        elif self.board[i][j] == b[1]:
                             eval -= 2
 
-                        if 'r' in p:
-                            if self.board[i][j] in p:
-                                eval += (7-i)
-                            elif self.board[i][j] in opps:
-                                eval -= i
-                        elif 'b' in p:
-                            if self.board[i][j] in p:
-                                eval += i
-                            elif self.board[i][j] in opps:
-                                eval -= (7-i)  
+                        if self.board[i][j] in r:
+                            eval += (7-i)
+                        elif self.board[i][j] in b:
+                            eval -= i
             
             self.eval = eval
-
-    def is_goal_min(self):
-        '''Determine if board is a winner/goal state for MIN'''
-        for i in range(len(self.board)):
-            if 'r' in self.board[i]:
-                return False
-            else:
-                continue
-        return True
 
 def get_opp_char(player):
     if player in ['b', 'B']:
@@ -143,15 +141,6 @@ def get_next_turn(curr_turn):
     else:
         return 'r'
 
-def read_from_file(filename):
-
-    f = open(filename)
-    lines = f.readlines()
-    board = [[str(x) for x in l.rstrip()] for l in lines]
-    f.close()
-
-    return board
-
 def simulate_successors(state, turn, dec):
     '''Get successors for current state by generating successors and filtering them based on jumps'''
     
@@ -159,13 +148,15 @@ def simulate_successors(state, turn, dec):
     successors_multi_jumps = []
 
     successors = generate_successors(state, turn)
+    if successors == []:
+        return successors
     # Choose from possible successors
     # If we can jump, we must
     for successor in successors:
         if successor.single_jump == True:
-            successors_jump += successor
+            successors_jump.append(successor)
             if successor.multi_jump == True:
-                successors_multi_jumps += successor
+                successors_multi_jumps.append(successor)
     
     # If multi jump list is not empty, go with it. Else, if jump list is not empty, go with that list. Otherwise, stick to current successors list
     if successors_multi_jumps != []:
@@ -174,6 +165,9 @@ def simulate_successors(state, turn, dec):
         successors = successors_jump
     
     # Node Ordering
+    for successor in successors:
+        successor.eval_fnc(turn)
+
     if dec == 'max':
         successors.sort(key=lambda x: x.eval, reverse=True)
     else:
@@ -753,14 +747,110 @@ def move_piece(state, piece_loc, move_loc):
     successor = State(successor_board)
     return [successor]
 
-def alpha_beta_search(state):
-    pass
+def alpha_beta_search_max(state, turn):
+    v = max_value(state, -100000, 100000, 0, turn)
+    # Return the action with the value v
+    actions = simulate_successors(state, turn, dec='max')
+    for action in actions:
+        print(action.board)
+        print(action.eval)
+        print(v)
+        if action.eval == v:
+            action.parent = state
+            return action
+        else:
+            continue
+    # in the case where there are no successors for state (end of game)
+    return state
 
-def max_value(state, alpha, beta, depth):
-    pass
+def alpha_beta_search_min(state, turn):
+    v = min_value(state, -100000, 100000, 0, turn)
+    # Return the action with the value v
+    actions = simulate_successors(state, turn, dec='min')
+    for action in actions:
+        print(action.board)
+        print(action.eval)
+        print(v)
+        if action.eval == v:
+            action.parent = state
+            return action
+        else:
+            continue
+    # in the case where there are no successors for state (end of game)
+    return state
 
-def min_value(state, alpha, beta, depth):
-    pass
+def max_value(state, alpha, beta, depth, turn):
+    if depth == 8 or state.is_goal_min == True or state.is_goal_max == True:
+        # At depth limit or terminal state
+        state.eval_fnc(turn)
+        return state.eval
+    v = -100000
+    actions = simulate_successors(state, turn, dec='max')
+    for action in actions:
+        v = max(v, min_value(action, alpha, beta, depth+1, get_next_turn(turn)))
+        if v >= beta:
+            return v
+        alpha = max(alpha, v)
+    return v
+
+def min_value(state, alpha, beta, depth, turn):
+    if depth == 8 or state.is_goal_min == True or state.is_goal_max == True:
+        # At depth limit
+        state.eval_fnc(turn)
+        return state.eval
+    v = 100000
+    actions = simulate_successors(state, turn, dec='min')
+    for action in actions:
+        v = min(v, max_value(action, alpha, beta, depth+1, get_next_turn(turn)))
+        if v <= alpha:
+            return v
+        beta = min(beta, v)
+    return v
+
+def game_time(state):
+    # red always goes first
+    while True:
+        # alpha beta pruning for red
+        red_move = alpha_beta_search_max(state, 'r')
+        if red_move == state:
+            print("HERE")
+            final_state = state
+            break
+        # alpha beta pruning for black
+        print("BLACK")
+        black_move = alpha_beta_search_min(red_move, 'b')
+        if black_move == red_move:
+            final_state = red_move
+            break
+        state = black_move
+
+    return final_state
+
+def read_from_file(filename):
+
+    f = open(filename)
+    lines = f.readlines()
+    board = [[str(x) for x in l.rstrip()] for l in lines]
+    f.close()
+
+    return board
+
+def output_file(filename, soln):
+    # Create output file
+    sys.stdout = open(filename, 'w')
+
+    # Get list of paths for each solution type and convert to string format
+    path = soln.get_path()
+
+    # Load file
+    for state in reversed(path):
+        for row in state:
+            sys.stdout.writelines(row)
+            sys.stdout.write("\n")
+        sys.stdout.write("\n")
+
+    # Close file
+    sys.stdout = sys.__stdout__
 
 if __name__ == '__main__':
 
@@ -781,10 +871,11 @@ if __name__ == '__main__':
 
     initial_board = read_from_file(args.inputfile)
     init_state = State(initial_board)
-    turn = 'b'
+    turn = 'r'
     ctr = 0
-    simulate(init_state, turn)
 
-    sys.stdout = open(args.outputfile, 'w')
+    # Run game
+    final_state = game_time(init_state)
+    # print(final_state.board)
+    output_file(args.outputfile, final_state)
 
-    sys.stdout = sys.__stdout__

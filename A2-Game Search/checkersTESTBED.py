@@ -15,13 +15,5 @@ c = [[1,2,3], [4,5,6]]
 d = []
 d += c
 e = [[11,22,33],[44,55,66]]
-d += e
-print(d)
-
-def rec(a, res):
-    if a == 10:
-        return 21
-    else:
-        res += rec(a+1, res)
-
-print(rec(a=1, res=[]))
+if 1 in e[0]:
+    print('yes')
