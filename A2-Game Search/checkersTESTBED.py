@@ -17,3 +17,8 @@ d += c
 e = [[11,22,33],[44,55,66]]
 if 1 in e[0]:
     print('yes')
+
+cache = dict()
+cache['hi'] = 10
+if 'no' not in cache.keys():
+    print('worked')

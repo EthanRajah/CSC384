@@ -70,7 +70,7 @@ class State:
             self = self.parent
             count += 1
         path += [self.board]
-        print(count)
+        # print(count)
         return path
 
     def eval_fnc(self, player):
@@ -105,10 +105,10 @@ class State:
                                 eval -= 1
                         
                         # Red: prefer in top half of board. Black: prefer at bottom half 
-                        if self.board[i][j] in r:
-                            eval += (7-i)
-                        elif self.board[i][j] in b:
-                            eval -= i                     
+                        # if self.board[i][j] in r:
+                        #     eval += (7-i)
+                        # elif self.board[i][j] in b:
+                        #     eval -= i                     
 
                     else:
                         # Not at edges
@@ -121,10 +121,10 @@ class State:
                         elif self.board[i][j] == b[1]:
                             eval -= 2
 
-                        if self.board[i][j] in r:
-                            eval += (7-i)
-                        elif self.board[i][j] in b:
-                            eval -= i
+                        # if self.board[i][j] in r:
+                        #     eval += (7-i)
+                        # elif self.board[i][j] in b:
+                        #     eval -= i
             
             self.eval = eval
 
@@ -455,7 +455,7 @@ def move_check(state, x, y, player):
                     multi_jump(pos_state, (y+2,x+2), successors)
                 elif pos_state != None and pos_state[0].switched == True:
                     successors += pos_state
-            elif state.board[y-1][x+1] == '.':
+            elif state.board[y+1][x+1] == '.':
                 # right diagonal must be empty space
                 successors += move_piece(state, (y,x), (y+1,x+1))
 
@@ -747,84 +747,76 @@ def move_piece(state, piece_loc, move_loc):
     successor = State(successor_board)
     return [successor]
 
-def alpha_beta_search_max(state, turn):
-    v = max_value(state, -100000, 100000, 0, turn)
+def alpha_beta_search_max(state, turn, cache):
+    v, best_move = max_value(state, -100000, 100000, 0, turn, cache)
     # Return the action with the value v
-    actions = simulate_successors(state, turn, dec='max')
-    for action in actions:
-        print(action.board)
-        print(action.eval)
-        print(v)
-        if action.eval == v:
-            action.parent = state
-            return action
-        else:
-            continue
-    # in the case where there are no successors for state (end of game)
-    return state
+    return best_move
 
-def alpha_beta_search_min(state, turn):
-    v = min_value(state, -100000, 100000, 0, turn)
+def alpha_beta_search_min(state, turn, cache):
+    v, best_move = min_value(state, -100000, 100000, 0, turn, cache)
     # Return the action with the value v
-    actions = simulate_successors(state, turn, dec='min')
-    for action in actions:
-        print(action.board)
-        print(action.eval)
-        print(v)
-        if action.eval == v:
-            action.parent = state
-            return action
-        else:
-            continue
-    # in the case where there are no successors for state (end of game)
-    return state
+    return best_move
 
-def max_value(state, alpha, beta, depth, turn):
+def max_value(state, alpha, beta, depth, turn, cache):
     if depth == 8 or state.is_goal_min == True or state.is_goal_max == True:
         # At depth limit or terminal state
-        state.eval_fnc(turn)
-        return state.eval
+        # State caching
+        if str(state) not in cache.keys():
+            state.eval_fnc(turn)
+            cache[str(state)] = state.eval
+        return cache[str(state)], state
     v = -100000
+    best_move = None
     actions = simulate_successors(state, turn, dec='max')
     for action in actions:
-        v = max(v, min_value(action, alpha, beta, depth+1, get_next_turn(turn)))
+        curr_v = min_value(action, alpha, beta, depth+1, get_next_turn(turn), cache)[0]
+        if curr_v >= v:
+            v = curr_v
+            best_move = action
         if v >= beta:
-            return v
+            return v, best_move
         alpha = max(alpha, v)
-    return v
+    return v, best_move
 
-def min_value(state, alpha, beta, depth, turn):
+def min_value(state, alpha, beta, depth, turn, cache):
     if depth == 8 or state.is_goal_min == True or state.is_goal_max == True:
-        # At depth limit
-        state.eval_fnc(turn)
-        return state.eval
+        # At depth limit or terminal state
+        # State caching
+        if str(state) not in cache.keys():
+            state.eval_fnc(turn)
+            cache[str(state)] = state.eval
+        return cache[str(state)], state
     v = 100000
+    best_move = None
     actions = simulate_successors(state, turn, dec='min')
     for action in actions:
-        v = min(v, max_value(action, alpha, beta, depth+1, get_next_turn(turn)))
+        curr_v = max_value(action, alpha, beta, depth+1, get_next_turn(turn), cache)[0]
+        if curr_v <= v:
+            v = curr_v
+            best_move = action
         if v <= alpha:
-            return v
+            return v, best_move
         beta = min(beta, v)
-    return v
+    return v, best_move
 
-def game_time(state):
+def game_time(state, cache):
     # red always goes first
-    while True:
-        # alpha beta pruning for red
-        red_move = alpha_beta_search_max(state, 'r')
-        if red_move == state:
-            print("HERE")
-            final_state = state
-            break
-        # alpha beta pruning for black
-        print("BLACK")
-        black_move = alpha_beta_search_min(red_move, 'b')
-        if black_move == red_move:
-            final_state = red_move
-            break
-        state = black_move
+    turn = 'r'
+    while state.eval != 100000 and state.eval != -100000:
+        if turn == 'r':
+            # alpha beta pruning for red
+            red_move = alpha_beta_search_max(state, 'r', cache)
+            red_move.parent = state
+            state = red_move
+        elif turn == 'b':
+            # alpha beta pruning for black
+            black_move = alpha_beta_search_min(red_move, 'b', cache)
+            black_move.parent = state
+            state = black_move
 
-    return final_state
+        turn = get_next_turn(turn)
+
+    return state
 
 def read_from_file(filename):
 
@@ -850,6 +842,7 @@ def output_file(filename, soln):
         sys.stdout.write("\n")
 
     # Close file
+    sys.stdout.close()
     sys.stdout = sys.__stdout__
 
 if __name__ == '__main__':
@@ -875,7 +868,7 @@ if __name__ == '__main__':
     ctr = 0
 
     # Run game
-    final_state = game_time(init_state)
-    # print(final_state.board)
+    cache = dict()
+    final_state = game_time(init_state, cache)
     output_file(args.outputfile, final_state)
 
