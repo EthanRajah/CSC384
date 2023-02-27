@@ -105,9 +105,9 @@ class State:
                                 eval -= 1
                         
                         # Red: prefer in top half of board. Black: prefer at bottom half 
-                        # if self.board[i][j] in r:
+                        # if self.board[i][j] in r[0]:
                         #     eval += (7-i)
-                        # elif self.board[i][j] in b:
+                        # elif self.board[i][j] in b[0]:
                         #     eval -= i                     
 
                     else:
@@ -121,9 +121,9 @@ class State:
                         elif self.board[i][j] == b[1]:
                             eval -= 2
 
-                        # if self.board[i][j] in r:
+                        # if self.board[i][j] in r[0]:
                         #     eval += (7-i)
-                        # elif self.board[i][j] in b:
+                        # elif self.board[i][j] in b[0]:
                         #     eval -= i
             
             self.eval = eval
@@ -758,7 +758,7 @@ def alpha_beta_search_min(state, turn, cache):
     return best_move
 
 def max_value(state, alpha, beta, depth, turn, cache):
-    if depth == 8 or state.is_goal_min == True or state.is_goal_max == True:
+    if depth == 10 or state.is_goal_min == True or state.is_goal_max == True:
         # At depth limit or terminal state
         # State caching
         if str(state) not in cache.keys():
@@ -779,7 +779,7 @@ def max_value(state, alpha, beta, depth, turn, cache):
     return v, best_move
 
 def min_value(state, alpha, beta, depth, turn, cache):
-    if depth == 8 or state.is_goal_min == True or state.is_goal_max == True:
+    if depth == 6 or state.is_goal_min == True or state.is_goal_max == True:
         # At depth limit or terminal state
         # State caching
         if str(state) not in cache.keys():
