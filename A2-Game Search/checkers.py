@@ -82,6 +82,7 @@ class State:
 
         utility = self.compute_utility(player)
         eval = 0
+        king = 0
         if utility == 100000 or utility == -100000:
             self.eval = utility
         else:
@@ -105,9 +106,9 @@ class State:
                                 eval -= 1
                         
                         # Red: prefer in top half of board. Black: prefer at bottom half 
-                        # if self.board[i][j] == 'r':
+                        # if self.board[i][j] == r[0]:
                         #     eval += (7-i)
-                        # elif self.board[i][j] == 'b':
+                        # elif self.board[i][j] == b[0]:
                         #     eval -= i                     
 
                     else:
@@ -121,12 +122,80 @@ class State:
                         elif self.board[i][j] == b[1]:
                             eval -= 3
 
-                        # if self.board[i][j] == 'r':
+                        # if self.board[i][j] == r[0]:
                         #     eval += (7-i)
-                        # elif self.board[i][j] == 'b':
+                        # elif self.board[i][j] == b[0]:
                         #     eval -= i
-            
+
+                    # check if king is threatened by opposing pieces and check number of possible moves 
+                    # if self.board[i][j] == r[1]:
+                    #     eval += is_king_threatened(self, i, j, r[1])
+                    # elif self.board[i][j] == b[1]:
+                    #     eval += is_king_threatened(self, i, j, b[1])
+
             self.eval = eval
+
+def is_king_threatened(state, row, col, piece):
+    # Check diagonals of one king piece to see how restricted it is
+    loss = 0
+    gain = 0
+    moves = 0
+    i = 1
+    j = 1
+    if (row + i >= 0 and row + i < 8 and col + j >= 0 and col + j < 8):
+        if piece == 'R':
+            if state.board[row+i][col+j] in ['b', 'B']:
+                loss -= 3
+            elif state.board[row+i][col+j] == '.':
+                moves += 1
+        elif piece == 'B':
+            if state.board[row+i][col+j] in ['r', 'R']:
+                loss += 3
+            elif state.board[row+i][col+j] == '.':
+                moves -= 1
+    
+    j = -1
+    if (row + i >= 0 and row + i < 8 and col + j >= 0 and col + j < 8):
+        if piece == 'R':
+            if state.board[row+i][col+j] in ['b', 'B']:
+                loss -= 3
+            elif state.board[row+i][col+j] == '.':
+                moves += 1
+        elif piece == 'B':
+            if state.board[row+i][col+j] in ['r', 'R']:
+                loss += 3
+            elif state.board[row+i][col+j] == '.':
+                moves -= 1
+    
+    i = -1
+    j = 1
+    if (row + i >= 0 and row + i < 8 and col + j >= 0 and col + j < 8):
+        if piece == 'R':
+            if state.board[row+i][col+j] in ['b', 'B']:
+                loss -= 3
+            elif state.board[row+i][col+j] == '.':
+                moves += 1
+        elif piece == 'B':
+            if state.board[row+i][col+j] in ['r', 'R']:
+                loss += 3
+            elif state.board[row+i][col+j] == '.':
+                moves -= 1
+    
+    j = -1
+    if (row + i >= 0 and row + i < 8 and col + j >= 0 and col + j < 8):
+        if piece == 'R':
+            if state.board[row+i][col+j] in ['b', 'B']:
+                loss -= 3
+            elif state.board[row+i][col+j] == '.':
+                moves += 1
+        elif piece == 'B':
+            if state.board[row+i][col+j] in ['r', 'R']:
+                loss += 3
+            elif state.board[row+i][col+j] == '.':
+                moves -= 1
+    
+    result = loss + gain + moves
+    return result
 
 def get_opp_char(player):
     if player in ['b', 'B']:
