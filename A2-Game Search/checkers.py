@@ -90,24 +90,24 @@ class State:
                     if i == 0 or i == 7 or j == 0 or j == 7:
                         # if at any of the safe from capture places (along edges)
                         if self.board[i][j] in r:
-                            eval += 1
+                            eval += 2
                             if self.board[i][j] == r[1]:
                                 # King piece
-                                eval += 2
+                                eval += 3
                             elif self.board[i][j] == r[0]:
                                 eval += 1
                         elif self.board[i][j] in b:
-                            eval -= 1
+                            eval -= 2
                             if self.board[i][j] == b[1]:
                                 # King piece
-                                eval -= 2
+                                eval -= 3
                             elif self.board[i][j] == b[0]:
                                 eval -= 1
                         
                         # Red: prefer in top half of board. Black: prefer at bottom half 
-                        # if self.board[i][j] in r[0]:
+                        # if self.board[i][j] == 'r':
                         #     eval += (7-i)
-                        # elif self.board[i][j] in b[0]:
+                        # elif self.board[i][j] == 'b':
                         #     eval -= i                     
 
                     else:
@@ -115,15 +115,15 @@ class State:
                         if self.board[i][j] == r[0]:
                             eval += 1
                         elif self.board[i][j] == r[1]:
-                            eval += 2
+                            eval += 3
                         elif self.board[i][j] == b[0]:
                             eval -= 1
                         elif self.board[i][j] == b[1]:
-                            eval -= 2
+                            eval -= 3
 
-                        # if self.board[i][j] in r[0]:
+                        # if self.board[i][j] == 'r':
                         #     eval += (7-i)
-                        # elif self.board[i][j] in b[0]:
+                        # elif self.board[i][j] == 'b':
                         #     eval -= i
             
             self.eval = eval
@@ -779,7 +779,7 @@ def max_value(state, alpha, beta, depth, turn, cache):
     return v, best_move
 
 def min_value(state, alpha, beta, depth, turn, cache):
-    if depth == 6 or state.is_goal_min == True or state.is_goal_max == True:
+    if depth == 10 or state.is_goal_min == True or state.is_goal_max == True:
         # At depth limit or terminal state
         # State caching
         if str(state) not in cache.keys():
