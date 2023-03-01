@@ -52,12 +52,12 @@ class State:
             if player == 'r':
                 return 100000
             else:
-                return -100000
+                return 100000
         elif self.is_goal_min() == True:
             if player == 'r':
                 return -100000
             else:
-                return 100000
+                return -100000
         else:
             return 0
 
