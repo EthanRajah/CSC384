@@ -116,7 +116,7 @@ class State:
                         if self.board[i][j] == r[0]:
                             eval += 1
                         elif self.board[i][j] == r[1]:
-                            eval += 3
+                            eval += 20
                         elif self.board[i][j] == b[0]:
                             eval -= 1
                         elif self.board[i][j] == b[1]:
