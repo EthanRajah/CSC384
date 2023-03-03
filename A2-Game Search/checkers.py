@@ -106,10 +106,10 @@ class State:
                                 eval -= 1
                         
                         # Red: prefer in top half of board. Black: prefer at bottom half 
-                        # if self.board[i][j] == r[0]:
-                        #     eval += (7-i)
-                        # elif self.board[i][j] == b[0]:
-                        #     eval -= i                     
+                        if self.board[i][j] == r[0]:
+                            eval += (7-i)
+                        elif self.board[i][j] == b[0]:
+                            eval -= i                     
 
                     else:
                         # Not at edges
@@ -122,16 +122,16 @@ class State:
                         elif self.board[i][j] == b[1]:
                             eval -= 3
 
-                        # if self.board[i][j] == r[0]:
-                        #     eval += (7-i)
-                        # elif self.board[i][j] == b[0]:
-                        #     eval -= i
+                        if self.board[i][j] == r[0]:
+                            eval += (7-i)
+                        elif self.board[i][j] == b[0]:
+                            eval -= i
 
                     # check if king is threatened by opposing pieces and check number of possible moves 
-                    # if self.board[i][j] == r[1]:
-                    #     eval += is_king_threatened(self, i, j, r[1])
-                    # elif self.board[i][j] == b[1]:
-                    #     eval += is_king_threatened(self, i, j, b[1])
+                    if self.board[i][j] == r[1]:
+                        eval += is_king_threatened(self, i, j, r[1])
+                    elif self.board[i][j] == b[1]:
+                        eval += is_king_threatened(self, i, j, b[1])
 
             self.eval = eval
 
@@ -232,15 +232,6 @@ def simulate_successors(state, turn, dec):
         successors = successors_multi_jumps
     elif successors_jump != []:
         successors = successors_jump
-    
-    # Node Ordering
-    for successor in successors:
-        successor.eval_fnc(turn)
-
-    if dec == 'max':
-        successors.sort(key=lambda x: x.eval, reverse=True)
-    else:
-        successors.sort(key=lambda x: x.eval)
 
     return successors
 
@@ -832,11 +823,14 @@ def max_value(state, alpha, beta, depth, turn, cache):
         # State caching
         if str(state) not in cache.keys():
             state.eval_fnc(turn)
+            # print(state.eval)
             cache[str(state)] = state.eval
         return cache[str(state)], state
     v = -100000
     best_move = None
     actions = simulate_successors(state, turn, dec='max')
+    # Node Ordering
+    actions.sort(key=lambda x: x.eval, reverse=True)
     for action in actions:
         curr_v = min_value(action, alpha, beta, depth+1, get_next_turn(turn), cache)[0]
         if curr_v >= v:
@@ -858,6 +852,8 @@ def min_value(state, alpha, beta, depth, turn, cache):
     v = 100000
     best_move = None
     actions = simulate_successors(state, turn, dec='min')
+    # Node Ordering
+    actions.sort(key=lambda x: x.eval)
     for action in actions:
         curr_v = max_value(action, alpha, beta, depth+1, get_next_turn(turn), cache)[0]
         if curr_v <= v:
@@ -875,11 +871,15 @@ def game_time(state, cache):
         if turn == 'r':
             # alpha beta pruning for red
             red_move = alpha_beta_search_max(state, 'r', cache)
+            # print(red_move.board)
+            red_move.eval_fnc(turn)
             red_move.parent = state
             state = red_move
         elif turn == 'b':
             # alpha beta pruning for black
             black_move = alpha_beta_search_min(red_move, 'b', cache)
+            # print(black_move.board)
+            black_move.eval_fnc(turn)
             black_move.parent = state
             state = black_move
 
