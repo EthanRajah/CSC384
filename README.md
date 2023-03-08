@@ -1,3 +1,3 @@
 # CSC384
 
-Code developed for solving assignments for CSC384 - Introduction to Artificial Intelligence 
+Code solutions for assignments in CSC384 - Introduction to Artificial Intelligence 
