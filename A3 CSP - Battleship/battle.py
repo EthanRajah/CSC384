@@ -1,4 +1,5 @@
 import sys
+import argparse
 
 '''****************************************************************************Class Definitions**********************************************************************************************'''
 
@@ -387,7 +388,6 @@ class NValuesConstraint(Constraint):
 
         #print "rv_count = {} test = {}".format(rv_count, self._lb <= rv_count and self._ub >= rv_count)
 
-
         return self._lb <= rv_count and self._ub >= rv_count
 
     def hasSupport(self, var, val):
@@ -422,6 +422,8 @@ class IfAllThenOneConstraint(Constraint):
     '''if each variable in left_side equals each value in left_values 
     then one of the variables in right side has to equal one of the values in right_values. 
     hasSupport tested only, check() untested.'''
+    '''left_side + right_side sum to the scope of the constraint'''
+
     def __init__(self, name, left_side, right_side, left_values, right_values):
         Constraint.__init__(self,name, left_side+right_side)
         self._name = "IfAllThenOne_" + name
@@ -477,3 +479,90 @@ def findvals_(remainingVars, assignment, finalTestfn, partialTestfn):
         assignment.pop()   #(var,val) didn't work since we didn't do the return
     remainingVars.append(var)
     return False
+
+def board_creation(filename):
+
+    f = open(filename)
+    lines = f.readlines()
+    count = 0
+    board = []
+    for l in lines:
+        if count == 0:
+            row_const = [int(x) for x in l.rstrip()]
+            count += 1
+        elif count == 1:
+            col_const = [int(x) for x in l.rstrip()]
+            count += 1
+        elif count == 2:
+            ship_const = [int(x) for x in l.rstrip()]
+            count += 1
+        else:
+            board += [[str(x) for x in l.rstrip()]]
+            count += 1
+    f.close()
+
+    return board, row_const, col_const, ship_const
+
+def variable_creation(board):
+    '''Using the cell based approach, create variable objects for each square of the board, specifying its domain'''
+    N = len(board[0])
+    varlist = []
+    var_dict = {}
+    # i = row, j = column
+    for i in range(0, N):
+        for j in range(0, N):
+            if board[i][j] != '0':
+                # board piece already assigned (given as hint)
+                v = Variable(str(i*N+j), [board[i][j]])
+            else:
+                # board square is 0 -- no hint given
+                v = Variable(str(i*N+j), ['S', '.', '<', '>', '^', 'v', 'M'])
+
+            # Create variable object list, as well as dictionary of variable objects, addressable by its name
+            varlist.append(v)
+            var_dict[str(i*N+j)] = v
+    
+    return varlist, var_dict
+
+def constraint_creation(board, row_const, col_const, var_dict):
+    '''Using the variable objects, create constraint objects based on row constraints, column constraints and water constraint'''
+    N = len(board[0])
+    constraints = []
+
+    # Define row and column constraints
+    for i in range(0, N):
+        row_i = []
+        col_i = []
+        ships = ['S', '.', '<', '>', '^', 'v', 'M']
+        for j in range(0, N):
+            #Create row and column lists, and add the variable objects for row i and column j to the lists
+            row_i.append(var_dict[str(i*N+j)])
+            col_i.append(var_dict[str(i+j*N)])
+
+        # Create row and column constraints for ships using lists as scope
+        constraints.append(NValuesConstraint('row_'+str(i), row_i, ships, 0, row_const[i]))
+        constraints.append(NValuesConstraint('col_'+str(i), col_i, ships, 0, col_const[i]))
+
+        '''Need to add water constraint and implement checks for edge cases and proper ship formation'''
+
+if __name__ == '__main__':
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--inputfile",
+        type=str,
+        required=True,
+        help="The input file that contains the puzzles."
+    )
+    parser.add_argument(
+        "--outputfile",
+        type=str,
+        required=True,
+        help="The output file that contains the solution."
+    )
+    args = parser.parse_args()
+    (board, row_const, col_const, ship_const) = board_creation(args.inputfile)
+    print(row_const)
+    print(col_const)
+    
+    
