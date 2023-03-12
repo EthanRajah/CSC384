@@ -361,7 +361,6 @@ class NValuesConstraint(Constraint):
        3) will only be satisfied by assignments such that at least 2
        the V1, V2, V3, V4 are assigned the value 1 or 4, and at most 3
        of them have been assigned the value 1 or 4.
-
     '''
 
     def __init__(self, name, scope, required_values, lower_bound, upper_bound):
@@ -372,6 +371,7 @@ class NValuesConstraint(Constraint):
         self._ub = upper_bound
 
     def check(self):
+        '''Return true if constraint is satisfied or if not all variables are assigned, return false if not'''
         assignments = []
         for v in self.scope():
             if v.isAssigned():
@@ -509,8 +509,8 @@ def variable_creation(board):
     varlist = []
     var_dict = {}
     # i = row, j = column
-    for i in range(0, N):
-        for j in range(0, N):
+    for i in range(N):
+        for j in range(N):
             if board[i][j] != '0':
                 # board piece already assigned (given as hint)
                 v = Variable(str(i*N+j), [board[i][j]])
@@ -530,20 +530,115 @@ def constraint_creation(board, row_const, col_const, var_dict):
     constraints = []
 
     # Define row and column constraints
-    for i in range(0, N):
+    for i in range(N):
         row_i = []
         col_i = []
-        ships = ['S', '.', '<', '>', '^', 'v', 'M']
-        for j in range(0, N):
+        ships_row = ['S', '<', '>', '^', 'v', 'M']
+        ships_col = ['S', '<', '>', '^', 'v', 'M']
+        for j in range(N):
             #Create row and column lists, and add the variable objects for row i and column j to the lists
             row_i.append(var_dict[str(i*N+j)])
             col_i.append(var_dict[str(i+j*N)])
 
-        # Create row and column constraints for ships using lists as scope
-        constraints.append(NValuesConstraint('row_'+str(i), row_i, ships, 0, row_const[i]))
-        constraints.append(NValuesConstraint('col_'+str(i), col_i, ships, 0, col_const[i]))
+            # Create water/proper ship formation constraints using binary table constraints
+            constraints += surroundings_check(board, i, j, var_dict)
 
-        '''Need to add water constraint and implement checks for edge cases and proper ship formation'''
+        # Create row and column constraints for ships using lists as scope
+        if i == 0:
+            # top row and first column
+            ships_row.remove('v')
+            ships_col.remove('>')
+        elif i == N-1:
+            # bottom row and last column
+            ships_row.remove('^')
+            ships_col.remove('<')
+        
+        constraints.append(NValuesConstraint('row_'+str(i), row_i, ships_row, row_const[i], row_const[i]))
+        constraints.append(NValuesConstraint('col_'+str(i), col_i, ships_col, col_const[i], col_const[i]))
+
+def surroundings_check(board, row, col, var_dict):
+    '''Check surroundings of square (i,j) iteratively (to form binary constraints) and create table of possible combinations for each'''
+    '''Complete for four corners, then for edges, then for general square'''
+    N = len(board[0])
+    c = []
+    
+    # Four corners
+    if row == 0 and col == 0:
+        # right
+        c += TableConstraint('sq_'+str(row)+str(col)+'_to_'+str(row+1)+str(col), [var_dict[str((row)*N+col)], var_dict[str((row+1)*N+col)]], 
+                            [['S', '.'], ['.', '^'], ['.', '<'], ['.', 'S'], ['.', '.'], ['<', '>'], ['<', 'M'], ['^', '.']])
+        # diag down right
+        c += TableConstraint('sq_'+str(row)+str(col)+'_to_'+str(row+1)+str(col-1), [var_dict[str((row)*N+col)], var_dict[str((row+1)*N+col-1)]],
+                             [['S', '.'], ['.', '^'], ['.', '<'], ['.', 'S'], ['.', '.'], ['.', 'M'], ['.', '<'], ['.', 'v'], ['<', '.'], ['^', '.']])
+        # down
+        c += TableConstraint('sq_'+str(row)+str(col)+'_to_'+str(row)+str(col-1), [var_dict[str((row)*N+col)], var_dict[str((row)*N+col-1)]], 
+                             [['S', '.'], ['.', '^'], ['.', '<'], ['.', 'S'], ['.', '.'], ['<', '.'], ['^', 'v'], ['^', 'M']])
+
+    elif row == N-1 and col == 0:
+        pass
+
+    elif row == 0 and col == N-1:
+        pass
+
+    elif row == N-1 and col == N-1:
+        pass
+
+    # Edges
+    elif row == 0:
+        pass
+
+    elif row == N-1:
+        pass
+
+    elif col == 0:
+        pass
+
+    elif col == N-1:
+        pass
+
+    # Non edge piece
+    else:
+        pass
+
+    return c
+
+def AC3(unassignedVars, csp):
+    '''Use Backtracking and AC-3 algorithm to solve the CSP'''
+    if unassignedVars == []:
+        return # continue search to print all solutions
+    
+    # Assign a variable
+    v = unassignedVars.pop(0)
+    for val in v.curDomain():
+        v.setValue(val)
+        NDE = True
+        if AC3Enforce(csp.constraintsOf(v), v, val, csp) == 'DE':
+            NDE = False
+        if NDE:
+            AC3(unassignedVars)
+        # TODO: Restore ALL values pruned by var=val assignment
+        
+    v.setValue(None)
+    unassignedVars.append(v)
+    return 
+
+def AC3Enforce(constraints, assignedvar, assignedval, csp):
+    '''Prune domains of variables related through constraints to ensure arc consistency'''
+    while constraints != []:
+        constraint = constraints.pop(0)
+        for var in constraint.scope():
+            # check each variable involved in the constraint: prune their domains if necessary
+            for val in var.curDomain():
+                if not constraint.hasSupport(var, val):
+                    # If value assignment does not result in other variables being able to assign to satisfy constraint
+                    var.pruneValue(val, assignedvar, assignedval)
+                    if var.curDomainSize() == 0:
+                        return 'DE' # domain empty
+                    # Add arcs back for recheck if not already in queue
+                    for recheck in csp.constraintsOf(var):
+                        if recheck != constraint and not recheck in constraints:
+                            constraints.append(recheck)
+    return 'Success'
 
 if __name__ == '__main__':
 
