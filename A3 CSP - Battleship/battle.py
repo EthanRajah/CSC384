@@ -565,46 +565,146 @@ def surroundings_check(board, row, col, var_dict):
     # Four corners
     if row == 0 and col == 0:
         # right
-        c += TableConstraint('sq_'+str(row)+str(col)+'_to_'+str(row+1)+str(col), [var_dict[str((row)*N+col)], var_dict[str((row+1)*N+col)]], 
+        c += TableConstraint('sq_'+str(row)+str(col)+'_to_'+str(row)+str(col+1), [var_dict[str((row)*N+col)], var_dict[str((row)*N+col+1)]], 
                             [['S', '.'], ['.', '^'], ['.', '<'], ['.', 'S'], ['.', '.'], ['<', '>'], ['<', 'M'], ['^', '.']])
         # diag down right
-        c += TableConstraint('sq_'+str(row)+str(col)+'_to_'+str(row+1)+str(col-1), [var_dict[str((row)*N+col)], var_dict[str((row+1)*N+col-1)]],
-                             [['S', '.'], ['.', '^'], ['.', '<'], ['.', 'S'], ['.', '.'], ['.', 'M'], ['.', '<'], ['.', 'v'], ['<', '.'], ['^', '.']])
+        c += TableConstraint('sq_'+str(row)+str(col)+'_to_'+str(row+1)+str(col+1), [var_dict[str((row)*N+col)], var_dict[str((row+1)*N+col+1)]],
+                             [['S', '.'], ['.', '^'], ['.', 'v'], ['.', '<'], ['.', 'S'], ['.', '.'], ['.', 'M'], ['.', '>'], ['<', '.'], ['^', '.']])
         # down
-        c += TableConstraint('sq_'+str(row)+str(col)+'_to_'+str(row)+str(col-1), [var_dict[str((row)*N+col)], var_dict[str((row)*N+col-1)]], 
+        c += TableConstraint('sq_'+str(row)+str(col)+'_to_'+str(row+1)+str(col), [var_dict[str((row)*N+col)], var_dict[str((row+1)*N+col)]], 
                              [['S', '.'], ['.', '^'], ['.', '<'], ['.', 'S'], ['.', '.'], ['<', '.'], ['^', 'v'], ['^', 'M']])
 
     elif row == N-1 and col == 0:
-        pass
-
+        # right
+        c += TableConstraint('sq_'+str(row)+str(col)+'_to_'+str(row)+str(col+1), [var_dict[str((row)*N+col)], var_dict[str((row)*N+col+1)]], 
+                            [['S', '.'], ['.', 'v'], ['.', '<'], ['.', 'S'], ['.', '.'], ['<', '>'], ['<', 'M'], ['v', '.']])
+        # diag up right
+        c += TableConstraint('sq_'+str(row)+str(col)+'_to_'+str(row-1)+str(col+1), [var_dict[str((row)*N+col)], var_dict[str((row-1)*N+col+1)]],
+                             [['S', '.'], ['.', '^'], ['.', 'v'], ['.', '<'], ['.', 'S'], ['.', '.'], ['.', 'M'], ['.', '>'], ['<', '.'], ['v', '.']])
+        # up
+        c += TableConstraint('sq_'+str(row)+str(col)+'_to_'+str(row-1)+str(col), [var_dict[str((row)*N+col)], var_dict[str((row-1)*N+col)]], 
+                             [['S', '.'], ['.', 'v'], ['.', '<'], ['.', 'S'], ['.', '.'], ['<', '.'], ['v', '^'], ['v', 'M']])
+        
     elif row == 0 and col == N-1:
-        pass
+        # left
+        c += TableConstraint('sq_'+str(row)+str(col)+'_to_'+str(row)+str(col-1), [var_dict[str((row)*N+col)], var_dict[str((row)*N+col-1)]], 
+                            [['S', '.'], ['.', '^'], ['.', '>'], ['.', 'S'], ['.', '.'], ['>', '<'], ['>', 'M'], ['^', '.']])
+        # diag down left
+        c += TableConstraint('sq_'+str(row)+str(col)+'_to_'+str(row+1)+str(col-1), [var_dict[str((row)*N+col)], var_dict[str((row+1)*N+col-1)]], 
+                            [['S', '.'], ['.', '^'], ['.', 'v'], ['.', '<'], ['.', 'S'], ['.', '.'], ['.', 'M'], ['.', '>'], ['>', '.'], ['^', '.']])
+        # down
+        c += TableConstraint('sq_'+str(row)+str(col)+'_to_'+str(row+1)+str(col), [var_dict[str((row)*N+col)], var_dict[str((row+1)*N+col)]], 
+                            [['S', '.'], ['.', '^'], ['.', '>'], ['.', 'S'], ['.', '.'], ['>', '.'], ['^', 'v'], ['^', 'M']])
 
     elif row == N-1 and col == N-1:
-        pass
+        # left
+        c += TableConstraint('sq_'+str(row)+str(col)+'_to_'+str(row)+str(col-1), [var_dict[str((row)*N+col)], var_dict[str((row)*N+col-1)]], 
+                            [['S', '.'], ['.', 'v'], ['.', '>'], ['.', 'S'], ['.', '.'], ['>', '<'], ['>', 'M'], ['v', '.']])
+        # diag up left
+        c += TableConstraint('sq_'+str(row)+str(col)+'_to_'+str(row-1)+str(col-1), [var_dict[str((row)*N+col)], var_dict[str((row-1)*N+col-1)]], 
+                            [['S', '.'], ['.', '^'], ['.', 'v'], ['.', '<'], ['.', 'S'], ['.', '.'], ['.', 'M'], ['.', '>'], ['>', '.'], ['v', '.']])
+        # up
+        c += TableConstraint('sq_'+str(row)+str(col)+'_to_'+str(row-1)+str(col), [var_dict[str((row)*N+col)], var_dict[str((row-1)*N+col)]], 
+                            [['S', '.'], ['.', 'v'], ['.', '>'], ['.', 'S'], ['.', '.'], ['>', '.'], ['v', '^'], ['v', 'M']])
 
     # Edges
     elif row == 0:
-        pass
-
+        # left
+        c += TableConstraint('sq_'+str(row)+str(col)+'_to_'+str(row)+str(col-1), [var_dict[str((row)*N+col)], var_dict[str((row)*N+col-1)]],
+                             [['S', '.'], ['.', '^'], ['.', '>'], ['.', 'S'], ['.', '.'], ['>', '<'], ['>', 'M'], ['^', '.'], ['<', '.'], ['M', '<'], ['M', 'M']])
+        # right
+        c += TableConstraint('sq_'+str(row)+str(col)+'_to_'+str(row)+str(col+1), [var_dict[str((row)*N+col)], var_dict[str((row)*N+col+1)]], 
+                            [['S', '.'], ['.', '^'], ['.', '<'], ['.', 'S'], ['.', '.'], ['<', '>'], ['<', 'M'], ['^', '.'], ['>', '.'], ['M', '>'], ['M', 'M']])
+        # diag down left
+        c += TableConstraint('sq_'+str(row)+str(col)+'_to_'+str(row+1)+str(col-1), [var_dict[str((row)*N+col)], var_dict[str((row+1)*N+col-1)]], 
+                            [['S', '.'], ['.', '^'], ['.', 'v'], ['.', '<'], ['.', 'S'], ['.', '.'], ['.', 'M'], ['.', '>'], ['>', '.'], ['^', '.'], ['<', '.'], ['M', '.']])
+        # diag down right
+        c += TableConstraint('sq_'+str(row)+str(col)+'_to_'+str(row+1)+str(col+1), [var_dict[str((row)*N+col)], var_dict[str((row+1)*N+col+1)]],
+                             [['S', '.'], ['.', '^'], ['.', 'v'], ['.', '<'], ['.', 'S'], ['.', '.'], ['.', 'M'], ['.', '>'], ['>', '.'], ['^', '.'], ['<', '.'], ['M', '.']])
+        # down
+        c += TableConstraint('sq_'+str(row)+str(col)+'_to_'+str(row+1)+str(col), [var_dict[str((row)*N+col)], var_dict[str((row+1)*N+col)]], 
+                            [['S', '.'], ['.', '^'], ['.', '>'], ['.', '<'], ['.', 'S'], ['.', '.'], ['.', 'M'], ['>', '.'], ['^', 'v'], ['^', 'M'], ['<', '.'], ['M', '.']])
+        
     elif row == N-1:
-        pass
+        # left
+        c += TableConstraint('sq_'+str(row)+str(col)+'_to_'+str(row)+str(col-1), [var_dict[str((row)*N+col)], var_dict[str((row)*N+col-1)]],
+                             [['S', '.'], ['.', 'v'], ['.', '>'], ['.', 'S'], ['.', '.'], ['>', '<'], ['>', 'M'], ['v', '.'], ['<', '.'], ['M', '<'], ['M', 'M']])
+        # right
+        c += TableConstraint('sq_'+str(row)+str(col)+'_to_'+str(row)+str(col+1), [var_dict[str((row)*N+col)], var_dict[str((row)*N+col+1)]], 
+                            [['S', '.'], ['.', 'v'], ['.', '<'], ['.', 'S'], ['.', '.'], ['<', '>'], ['<', 'M'], ['v', '.'], ['>', '.'], ['M', '>'], ['M', 'M']])
+        # diag up left
+        c += TableConstraint('sq_'+str(row)+str(col)+'_to_'+str(row+1)+str(col-1), [var_dict[str((row)*N+col)], var_dict[str((row-1)*N+col-1)]], 
+                            [['S', '.'], ['.', 'v'], ['.', '^'], ['.', '<'], ['.', 'S'], ['.', '.'], ['.', 'M'], ['.', '>'], ['>', '.'], ['v', '.'], ['<', '.'], ['M', '.']])
+        # diag up right
+        c += TableConstraint('sq_'+str(row)+str(col)+'_to_'+str(row+1)+str(col+1), [var_dict[str((row)*N+col)], var_dict[str((row-1)*N+col+1)]],
+                            [['S', '.'], ['.', 'v'], ['.', '^'], ['.', '<'], ['.', 'S'], ['.', '.'], ['.', 'M'], ['.', '>'], ['>', '.'], ['v', '.'], ['<', '.'], ['M', '.']])
+        # up
+        c += TableConstraint('sq_'+str(row)+str(col)+'_to_'+str(row+1)+str(col), [var_dict[str((row)*N+col)], var_dict[str((row-1)*N+col)]], 
+                            [['S', '.'], ['.', 'v'], ['.', '>'], ['.', '<'], ['.', 'S'], ['.', '.'], ['.', 'M'], ['>', '.'], ['<', '.'], ['v', '^'], ['v', 'M'], ['M', '.']])
 
     elif col == 0:
-        pass
+        # right
+        c += TableConstraint('sq_'+str(row)+str(col)+'_to_'+str(row)+str(col+1), [var_dict[str((row)*N+col)], var_dict[str((row)*N+col+1)]], 
+                            [['S', '.'], ['.', 'v'], ['.', '<'], ['.', 'S'], ['.', '.'], ['<', '>'], ['<', 'M'], ['v', '.'], ['^', '.'], ['.', '^'] ['M', '.'], ['.', 'M']])
+        # diag up right
+        c += TableConstraint('sq_'+str(row)+str(col)+'_to_'+str(row+1)+str(col+1), [var_dict[str((row)*N+col)], var_dict[str((row-1)*N+col+1)]],
+                            [['S', '.'], ['.', 'v'], ['.', '^'], ['.', '<'], ['.', 'S'], ['.', '.'], ['.', 'M'], ['.', '>'], ['v', '.'], ['^', '.'], ['<', '.'], ['M', '.']])
+        # diag down right
+        c += TableConstraint('sq_'+str(row)+str(col)+'_to_'+str(row+1)+str(col+1), [var_dict[str((row)*N+col)], var_dict[str((row+1)*N+col+1)]],
+                            [['S', '.'], ['.', 'v'], ['.', '^'], ['.', '<'], ['.', 'S'], ['.', '.'], ['.', 'M'], ['.', '>'], ['v', '.'], ['^', '.'], ['<', '.'], ['M', '.']])
+        # up
+        c += TableConstraint('sq_'+str(row)+str(col)+'_to_'+str(row+1)+str(col), [var_dict[str((row)*N+col)], var_dict[str((row-1)*N+col)]], 
+                            [['S', '.'], ['.', 'v'], ['.', '<'], ['.', 'S'], ['.', '.'], ['v', '^'], ['v', 'M'], ['<', '.'], ['M', 'M'], ['M', '^'], ['^', '.']])
+        # down
+        c += TableConstraint('sq_'+str(row)+str(col)+'_to_'+str(row+1)+str(col), [var_dict[str((row)*N+col)], var_dict[str((row+1)*N+col)]], 
+                            [['S', '.'], ['.', '^'], ['.', '<'], ['.', 'S'], ['.', '.'], ['^', 'v'], ['^', 'M'], ['<', '.'], ['M', 'M'], ['M', 'v'], ['v', '.']])
 
     elif col == N-1:
-        pass
+        # left
+        c += TableConstraint('sq_'+str(row)+str(col)+'_to_'+str(row)+str(col-1), [var_dict[str((row)*N+col)], var_dict[str((row)*N+col-1)]],
+                            [['S', '.'], ['.', 'v'], ['.', '>'], ['.', 'S'], ['.', '.'], ['>', '<'], ['>', 'M'], ['v', '.'], ['^', '.'], ['.', '^'] ['M', '.'], ['.', 'M']])
+        # diag up left
+        c += TableConstraint('sq_'+str(row)+str(col)+'_to_'+str(row+1)+str(col+1), [var_dict[str((row)*N+col)], var_dict[str((row-1)*N+col+1)]],
+                            [['S', '.'], ['.', 'v'], ['.', '^'], ['.', '<'], ['.', 'S'], ['.', '.'], ['.', 'M'], ['.', '>'], ['v', '.'], ['^', '.'], ['>', '.'], ['M', '.']])
+        # diag down left
+        c += TableConstraint('sq_'+str(row)+str(col)+'_to_'+str(row+1)+str(col+1), [var_dict[str((row)*N+col)], var_dict[str((row+1)*N+col+1)]],
+                            [['S', '.'], ['.', 'v'], ['.', '^'], ['.', '<'], ['.', 'S'], ['.', '.'], ['.', 'M'], ['.', '>'], ['v', '.'], ['^', '.'], ['>', '.'], ['M', '.']])
+        # up
+        c += TableConstraint('sq_'+str(row)+str(col)+'_to_'+str(row+1)+str(col), [var_dict[str((row)*N+col)], var_dict[str((row-1)*N+col)]], 
+                            [['S', '.'], ['.', 'v'], ['.', '>'], ['.', 'S'], ['.', '.'], ['v', '^'], ['v', 'M'], ['>', '.'], ['M', 'M'], ['M', '^'], ['^', '.']])
+        # down
+        c += TableConstraint('sq_'+str(row)+str(col)+'_to_'+str(row+1)+str(col), [var_dict[str((row)*N+col)], var_dict[str((row+1)*N+col)]], 
+                            [['S', '.'], ['.', '^'], ['.', '>'], ['.', 'S'], ['.', '.'], ['^', 'v'], ['^', 'M'], ['>', '.'], ['M', 'M'], ['M', 'v'], ['v', '.']])
 
     # Non edge piece
     else:
-        pass
+        # right
+        c += TableConstraint('sq_'+str(row)+str(col)+'_to_'+str(row)+str(col+1), [var_dict[str((row)*N+col)], var_dict[str((row)*N+col+1)]], 
+                            [['S', '.'], ['.', 'v'], ['.', '<'], ['.', 'S'], ['.', '.'], ['<', '>'], ['<', 'M'], ['v', '.'], ['^', '.'], ['.', '^'] ['M', '.'], ['.', 'M']])
+        # left
+
+        # diag up right
+
+        # diag up left
+
+        # diag down right
+
+        # diag down left
+
+        # up
+
+        # down
 
     return c
+
+def shipNumConstCheck(csp):
+    '''With all the variables assigned, form the board and check if the ship number constraint is satisfied'''
+    pass
 
 def AC3(unassignedVars, csp):
     '''Use Backtracking and AC-3 algorithm to solve the CSP'''
     if unassignedVars == []:
+        shipNumConstCheck(csp)
         return # continue search to print all solutions
     
     # Assign a variable
@@ -616,8 +716,7 @@ def AC3(unassignedVars, csp):
             NDE = False
         if NDE:
             AC3(unassignedVars)
-        # TODO: Restore ALL values pruned by var=val assignment
-        
+        Variable.restoreValues(v, val)
     v.setValue(None)
     unassignedVars.append(v)
     return 
