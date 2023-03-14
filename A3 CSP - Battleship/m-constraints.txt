@@ -1,0 +1,19 @@
+['.', 'S', '.', '.', '.', 'S']
+['.', '.', '.', '.', '.', '.']
+['.', 'M', 'M', 'M', '.', 'S']
+['.', '.', '.', '.', '.', '.']
+['^', '.', '<', 'M', '.', '.']
+['v', '.', '.', '.', '.', '.']
+
+- If left and right is water and main is M, above must be M or ^
+- If left and right is water and main is M, below must be M or v
+- If above and below is water and main is M, left must be M or <
+- If above and below is water, and main is M, right must be M or >
+- If left and main are M, right must be >
+- If right and main are M, left must be <
+- If up and main are M, below must be v
+- If down and main are M, up must be ^ 
+
+
+	
+	
