@@ -198,6 +198,7 @@ class CSP:
         self._constraints = constraints
         self.size = 0
         self.solutions = []
+        self.count = 0
 
         #some sanity checks
         varsInCnst = set()
@@ -434,34 +435,29 @@ class IfAllThenOneConstraint(Constraint):
         self._lv = left_values
         self._rv = right_values
     
-    def hasSupport(self, v, val):
-        '''check if var=val has an extension to an assignment of the
-           other variable in the constraint that satisfies the constraint'''
-        if v not in self.scope():
-            return True
-        left = True
-        right = True
-        if v in self._ls:
-            vindex = self._ls.index(v)
-            if self._lv[vindex] != val:
-                left = False
-            for var in self._rs:
-                for value in self._rv:
-                    if not var.inCurDomain(value):
-                        right = False
-                        break
-        
-        elif v in self._rs:
-            if val not in self._rv:
-                right = False
-            for i,var in enumerate(self._ls):
-                if not var.inCurDomain(self._lv[i]):
-                    left = False
-                    break
-        
-        if left == right:
-            return True
-        return right
+    # def hasSupport(self, v, val):
+    #     '''check if var=val has an extension to an assignment of the
+    #        other variable in the constraint that satisfies the constraint'''
+    #     if v not in self.scope():
+    #         return True
+    #     left = True
+    #     right = True
+    #     if val != self._lv[0]:
+    #         # If value is not M, constraint is useless
+    #         return True
+    #     for var in self._ls:
+    #         vindex = self._ls.index(var)
+    #         if var.getValue() != self._lv[vindex]:
+    #             # Check that each variable in left side is equal to values in left side
+    #             # If not true, constraint cannot be applied so return True anyways
+    #             return True
+    #     for var in self._rs:
+    #         for value in var.curDomain():
+    #             if value in self._rv:
+    #                 # Left side equals left values, so right side must be value in right values
+    #                 return True
+    #         print(var.curDomain())
+    #         return False
 
 '''****************************************************************************Program Functions**********************************************************************************************'''
 
@@ -664,22 +660,22 @@ def surroundings_check(board, row, col, var_dict):
                              ['<', '.'], ['M', '.'], ['.', 'M']]))
         
         ## Create IfAllThenOne constraints for general squares
-        c.append(IfAllThenOneConstraint('left_right_above', [var_dict[str(row*N+col)], var_dict[str(row*N+col-1)], var_dict[str(row*N+col+1)]], [var_dict[str((row-1)*N+col)]], 
-                                        ['M', '.', '.'], ['M', '^']))
-        c.append(IfAllThenOneConstraint('left_right_below', [var_dict[str(row*N+col)], var_dict[str(row*N+col-1)], var_dict[str(row*N+col+1)]], [var_dict[str((row+1)*N+col)]],
-                                        ['M', '.', '.'], ['M', 'v']))
-        c.append(IfAllThenOneConstraint('above_below_left', [var_dict[str(row*N+col)], var_dict[str((row-1)*N+col)], var_dict[str((row+1)*N+col)]], [var_dict[str(row*N+col-1)]],
-                                        ['M', '.', '.'], ['M', '<']))
-        c.append(IfAllThenOneConstraint('above_below_right', [var_dict[str(row*N+col)], var_dict[str((row-1)*N+col)], var_dict[str((row+1)*N+col)]], [var_dict[str(row*N+col+1)]],
-                                        ['M', '.', '.'], ['M', '>']))
-        c.append(IfAllThenOneConstraint('left_main_right', [var_dict[str(row*N+col)], var_dict[str(row*N+col-1)]], [var_dict[str(row*N+col+1)]],
-                                        ['M', 'M'], ['>']))
-        c.append(IfAllThenOneConstraint('right_main_left', [var_dict[str(row*N+col)], var_dict[str(row*N+col+1)]], [var_dict[str(row*N+col-1)]],
-                                        ['M', 'M'], ['<']))
-        c.append(IfAllThenOneConstraint('above_main_below', [var_dict[str(row*N+col)], var_dict[str((row-1)*N+col)]], [var_dict[str((row+1)*N+col)]],
-                                        ['M', 'M'], ['v']))
-        c.append(IfAllThenOneConstraint('below_main_above', [var_dict[str(row*N+col)], var_dict[str((row+1)*N+col)]], [var_dict[str((row-1)*N+col)]],
-                                        ['M', 'M'], ['^']))
+        # c.append(IfAllThenOneConstraint('left_right_above', [var_dict[str(row*N+col)], var_dict[str(row*N+col-1)], var_dict[str(row*N+col+1)]], [var_dict[str((row-1)*N+col)]], 
+        #                                 ['M', '.', '.'], ['M', '^']))
+        # c.append(IfAllThenOneConstraint('left_right_below', [var_dict[str(row*N+col)], var_dict[str(row*N+col-1)], var_dict[str(row*N+col+1)]], [var_dict[str((row+1)*N+col)]],
+        #                                 ['M', '.', '.'], ['M', 'v']))
+        # c.append(IfAllThenOneConstraint('above_below_left', [var_dict[str(row*N+col)], var_dict[str((row-1)*N+col)], var_dict[str((row+1)*N+col)]], [var_dict[str(row*N+col-1)]],
+        #                                 ['M', '.', '.'], ['M', '<']))
+        # c.append(IfAllThenOneConstraint('above_below_right', [var_dict[str(row*N+col)], var_dict[str((row-1)*N+col)], var_dict[str((row+1)*N+col)]], [var_dict[str(row*N+col+1)]],
+        #                                 ['M', '.', '.'], ['M', '>']))
+        # c.append(IfAllThenOneConstraint('left_main_right', [var_dict[str(row*N+col)], var_dict[str(row*N+col-1)]], [var_dict[str(row*N+col+1)]],
+        #                                 ['M', 'M'], ['>']))
+        # c.append(IfAllThenOneConstraint('right_main_left', [var_dict[str(row*N+col)], var_dict[str(row*N+col+1)]], [var_dict[str(row*N+col-1)]],
+        #                                 ['M', 'M'], ['<']))
+        # c.append(IfAllThenOneConstraint('above_main_below', [var_dict[str(row*N+col)], var_dict[str((row-1)*N+col)]], [var_dict[str((row+1)*N+col)]],
+        #                                 ['M', 'M'], ['v']))
+        # c.append(IfAllThenOneConstraint('below_main_above', [var_dict[str(row*N+col)], var_dict[str((row+1)*N+col)]], [var_dict[str((row-1)*N+col)]],
+        #                                 ['M', 'M'], ['^']))
         
     return c
 
@@ -738,12 +734,13 @@ def constraint_creation(board, row_const, col_const, var_dict):
     
     return constraints
 
-def shipNumConstCheck(csp):
-    '''With all the variables assigned, form the board and check if the ship number constraint is satisfied'''
+def shipNumConstCheck(csp, ship_const):
+    '''With all the variables assigned, form the board and check if the ship number constraint is satisfied and
+    if proper ships are formed (specifically general pieces where we have M)'''
     variables = csp.variables()
     count = 0
     solution = []
-    # Create solution array to return
+    # Create solution array
     for i in range(csp.size):
         add_row = []
         for j in range(csp.size):
@@ -752,18 +749,81 @@ def shipNumConstCheck(csp):
         solution.append(add_row)
     # Place variable results in solution
     for var in variables:
-        ind = copy.deepcopy(int(var.name()))
+        ind = copy.copy(int(var.name()))
         col_num = ind % csp.size
         row_num = ind // csp.size
         solution[row_num][col_num] = var.getValue()
     
-    return solution
+    csp.count += 1
+    # Now check solution to see if proper ships have been formed
+    for i in range(csp.size):
+        for j in range(csp.size):
+            if solution[i][j] == 'M' and i not in [0, csp.size-1] and j not in [0, csp.size-1]:
+                if solution[i-1][j] == '.' and solution[i+1][j] == '.':
+                    # above and below are water so M has to be a part of horizontal ship
+                    if solution[i][j-1] in ['M', '<'] and solution[i][j+1] in ['M', '>']:
+                        # specific cases
+                        if solution[i][j-1] == 'M' and solution[i][j+1] != '>':
+                            return
+                        if solution[i][j+1] == 'M' and solution [i][j-1] != '<':
+                            return
+                    else:
+                        return 
+                
+                elif solution[i][j-1] == '.' and solution [i][j+1] == '.':
+                    # left and right are water so M has to be part of a vertical ship
+                    if solution[i-1][j] in ['M', '^'] and solution[i+1][j] in ['M', 'v']:
+                        # specific cases
+                        if solution[i-1][j] == 'M' and solution[i+1][j] != 'v':
+                            return
+                        if solution[i+1][j] == 'M' and solution[i-1][j] != '^':
+                            return 
+                    else:
+                        return 
 
-def AC3(unassignedVars, csp):
+    # If we get to here without returning, means that the proper ships have been formed 
+    # Now check if solution adheres to ship number constraint
+    sub_tot = ship_const[0]
+    destroyer_tot = ship_const[1]
+    cruiser_tot = ship_const[2]
+    battleship_tot = ship_const[3]
+
+    sub_num = 0
+    destroy_num = 0
+    cruise_num = 0
+    battleship_num = 0
+
+    for i in range(csp.size):
+        for j in range(csp.size):
+            if sub_num > sub_tot or destroy_num > destroyer_tot or cruise_num > cruiser_tot or battleship_num > battleship_tot:
+                # if any ship constraint not satisfied, return
+                return
+            if solution[i][j] == 'S':
+                sub_num += 1
+            elif solution[i][j] == 'M':
+                # check for horizontal
+                if solution[i][j-1] == '<' and solution[i][j+1] == '>':
+                    cruise_num += 1
+                # check for vertical
+                elif solution[i-1][j] == '^' and solution[i+1][j] == 'v':
+                    cruise_num += 1
+            elif solution[i][j] == '^' and solution[i+1][j] == 'v':
+                destroy_num += 1
+            elif solution[i][j] == '<' and solution[i][j+1] == '>':
+                destroy_num += 1
+            elif solution[i][j] == 'M' and solution[i][j+1] == 'M' and solution[i][j-1] == '<':
+                battleship_num += 1
+            elif solution[i][j] == 'M' and solution[i-1][j] == '^' and solution[i+1][j] == 'M':
+                battleship_num += 1
+    
+    # Got to the end, both constraints are satisfied for this solution, so keep
+    csp.solutions.append(solution)
+
+def AC3(unassignedVars, csp, ship_const):
     '''Use Backtracking and AC-3 algorithm to solve the CSP'''
     if unassignedVars == []:
-        csp.solutions.append(shipNumConstCheck(csp))
-        return # continue search to print all solutions
+        shipNumConstCheck(csp, ship_const)
+        return # continue search to get all solutions
     # Assign a variable
     v = unassignedVars.pop(0)
     for val in v.curDomain():
@@ -772,7 +832,7 @@ def AC3(unassignedVars, csp):
         if AC3Enforce(csp.constraintsOf(v), v, val, csp) == 'DE':
             NDE = False
         if NDE:
-            AC3(unassignedVars, csp)
+            AC3(unassignedVars, csp, ship_const)
         Variable.restoreValues(v, val)
     v.setValue(None)
     unassignedVars.append(v)
@@ -824,9 +884,10 @@ def output_file(filename, soln):
     sys.stdout = open(filename, 'w')
 
     # Load file
-    for row in soln:
-        sys.stdout.writelines(row)
-        sys.stdout.write("\n")
+    for sol in soln:
+        for row in sol:
+            sys.stdout.writelines(row)
+            sys.stdout.write("\n")
 
     # Close file
     sys.stdout.close()
@@ -848,17 +909,13 @@ if __name__ == '__main__':
         help="The output file that contains the solution."
     )
     args = parser.parse_args()
-    board, row_const, col_const, ship_const = board_creation(args.inputfile)
 
+    # Formulate CSP -  create variables and domains, create constraints and run AC3 with Backtracking
+    board, row_const, col_const, ship_const = board_creation(args.inputfile)
     unassignedVars, vardict = variable_creation(board)
     c = constraint_creation(board, row_const, col_const, vardict)
     csp = CSP('battleship', unassignedVars, c)
     csp.size = len(board[0])
-    AC3(csp.variables(),csp)
-
-    count = 0
-    for i in range(len(csp.solutions)):
-        print(csp.solutions[i])
-        count += 1
-    print(count)
+    AC3(csp.variables(),csp, ship_const)
+    output_file(args.outputfile, csp.solutions)
     
