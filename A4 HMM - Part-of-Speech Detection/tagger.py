@@ -24,7 +24,7 @@ def observationProbCounting():
     '''Create matrix for observation probabilities of word observation, given POS tag - P(ek|Sk)'''
     pass
 
-def Viterbi():
+def viterbi():
     '''Use Viterbi algorithm to determine the most likely sequence of POS tags'''
     pass
 
