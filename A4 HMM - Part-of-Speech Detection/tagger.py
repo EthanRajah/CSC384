@@ -2,44 +2,94 @@ import os
 import sys
 import argparse
 from collections import Counter
+import numpy as np
 
 class HMM:
-    '''Hidden Markov Model class to store relevent matrices and sequences'''
+    '''Hidden Markov Model class to store relevent matrices and function sequences'''
     def __init__(self):
         observations = []
         hiddenStates = []
+        initialProb = np.array([])
+        transitionProb = np.array([])
+        observationProb = np.array([])
+        orderPOS = []
 
-def parseTraining(hmm, training_list):
-    '''Parse training data and create two lists, one for the words (observations) and one for the POS tags (hidden states)'''
-    words = []
-    posTags = []
+    def parseTraining(self, training_list):
+        '''Parse training data and create two lists, one for the words (observations) and one for the POS tags (hidden states)'''
 
-    for training_file in training_list:
-        # Open training file, for each line split on colon, appending first element to words list and second element to posTags list
-        with open(training_file, 'r') as f:
-            for line in f:
-                line = line.split(':')
-                words.append(line[0].strip())
-                posTags.append(line[1].strip())
-    
-    hmm.observations = words
-    hmm.hiddenStates = posTags
+        words = []
+        posTags = []
 
-def sentenceSeperation():
-    '''Seperate input text file by text symbol of choice (i.e. periods, colons etc)'''
-    pass
+        for training_file in training_list:
+            # Open training file, for each line split on colon, appending first element to words list and second element to posTags list
+            with open(training_file, 'r') as f:
+                for line in f:
+                    line = line.split(':')
+                    words.append(line[0].strip())
+                    posTags.append(line[1].strip())
 
-def initialProbCounting():
-    '''Create matrix for the initial probabilities of each POS tag - P(S0)'''
-    pass
+        self.observations = words
+        self.hiddenStates = posTags
 
-def transitionProbCounting():
-    '''Create matrix for transition probabilities between POS tags - P(Sk+1|Sk)'''
-    pass
+    def sentenceSeperation(self, symbol):
+        '''Create matrices of words and POS tags using symbol of choice (i.e. periods, colons etc) to split sentences'''
+        
+        sentences = []
+        sentence = []
+        posTagSentence = []
+        posTagSentences = []
+        for i, word in enumerate(self.observations):
+            if word == symbol:
+                sentences.append(sentence)
+                sentence = []
+                posTagSentences.append(posTagSentence)
+                posTagSentence = []
+            else:
+                sentence.append(word)
+                posTagSentence.append(self.hiddenStates[i])
+        sentences.append(sentence)
+        posTagSentences.append(posTagSentence)
 
-def observationProbCounting():
-    '''Create matrix for observation probabilities of word observation, given POS tag - P(ek|Sk)'''
-    pass
+        # Remove empty list at the end of each matrix, sentences and posTagSentences
+        sentences.pop()
+        posTagSentences.pop()
+        
+        # Overwrite observations array with sentences array and hiddenStates array with posTagSentences array
+        self.observations = sentences
+        self.hiddenStates = posTagSentences
+
+    def initialProbCounting(self):
+        '''Create matrix for the initial probabilities for each POS tag - P(S0)'''
+        
+        numSentences = len(self.hiddenStates)
+        initProb = np.array([])
+        initStates = []
+
+        # Get first column of hiddenStates matrix
+        for sentence in self.hiddenStates:
+            initStates.append(sentence[0])
+
+        initCount = Counter(initStates)
+        orderingTags = list(initCount.keys())
+
+        # Using initCount, create initProb array of initial probabilities for each POS tag
+        for tag in initCount:
+            initProb = np.append(initProb, initCount[tag]/numSentences)
+        
+        # Normalize initProb array
+        initProb = initProb/np.sum(initProb)
+
+        # Set class variables for future use
+        self.initialProb = initProb
+        self.orderPOS = orderingTags
+
+    def transitionProbCounting():
+        '''Create matrix for transition probabilities between POS tags - P(Sk+1|Sk)'''
+        pass
+
+    def observationProbCounting():
+        '''Create matrix for observation probabilities of word observation, given POS tag - P(ek|Sk)'''
+        pass
 
 def viterbi():
     '''Use Viterbi algorithm to determine the most likely sequence of POS tags'''
@@ -77,4 +127,7 @@ if __name__ == '__main__':
 
     # Initialize HMM class and parse training data
     hmm = HMM()
-    parseTraining(hmm, training_list)
+    hmm.parseTraining(training_list)
+    hmm.sentenceSeperation('.')
+    hmm.initialProbCounting()
+    print(hmm.initialProb)
