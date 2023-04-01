@@ -2,17 +2,29 @@ import os
 import sys
 import argparse
 from collections import Counter
+from collections import defaultdict
+from itertools import groupby
 import numpy as np
 
 class HMM:
-    '''Hidden Markov Model class to store relevent matrices and function sequences'''
+    '''Hidden Markov Model class to store relevent matrices and function sequences
+    Note that N = number of POS tags and M = number of words in the data set'''
     def __init__(self):
-        observations = []
-        hiddenStates = []
-        initialProb = np.array([])
-        transitionProb = np.array([])
-        observationProb = np.array([])
-        orderPOS = []
+        self.observations = []
+        self.hiddenStates = []
+        self.initialProb = np.array([])
+        self.transitionProb = np.array([])
+        self.observationProb = np.array([])
+        self.initPOS = []
+        self.tags = ["AJ0", "AJC", "AJS", "AT0", "AV0", "AVP", "AVQ", "CJC", "CJS", "CJT", "CRD",
+        "DPS", "DT0", "DTQ", "EX0", "ITJ", "NN0", "NN1", "NN2", "NP0", "ORD", "PNI",
+        "PNP", "PNQ", "PNX", "POS", "PRF", "PRP", "PUL", "PUN", "PUQ", "PUR", "TO0",
+        "UNC", 'VBB', 'VBD', 'VBG', 'VBI', 'VBN', 'VBZ', 'VDB', 'VDD', 'VDG', 'VDI',
+        'VDN', 'VDZ', 'VHB', 'VHD', 'VHG', 'VHI', 'VHN', 'VHZ', 'VM0', 'VVB', 'VVD',
+        'VVG', 'VVI', 'VVN', 'VVZ', 'XX0', 'ZZ0', 'AJ0-AV0', 'AJ0-VVN', 'AJ0-VVD',
+        'AJ0-NN1', 'AJ0-VVG', 'AVP-PRP', 'AVQ-CJS', 'CJS-PRP', 'CJT-DT0', 'CRD-PNI', 'NN1-NP0', 'NN1-VVB',
+        'NN1-VVG', 'NN2-VVZ', 'VVD-VVN', 'AV0-AJ0', 'VVN-AJ0', 'VVD-AJ0', 'NN1-AJ0', 'VVG-AJ0', 'PRP-AVP',
+        'CJS-AVQ', 'PRP-CJS', 'DT0-CJT', 'PNI-CRD', 'NP0-NN1', 'VVB-NN1', 'VVG-NN1', 'VVZ-NN2', 'VVN-VVD']
 
     def parseTraining(self, training_list):
         '''Parse training data and create two lists, one for the words (observations) and one for the POS tags (hidden states)'''
@@ -58,6 +70,8 @@ class HMM:
         self.observations = sentences
         self.hiddenStates = posTagSentences
 
+        # TODO: Do this for test data as well
+
     def initialProbCounting(self):
         '''Create matrix for the initial probabilities for each POS tag - P(S0)'''
         
@@ -76,19 +90,49 @@ class HMM:
         for tag in initCount:
             initProb = np.append(initProb, initCount[tag]/numSentences)
         
-        # Normalize initProb array
-        initProb = initProb/np.sum(initProb)
+        # For each POS tag not seen in tags, append 0 to initProb array
+        for tag in self.tags:
+            if tag not in orderingTags:
+                initProb = np.append(initProb, 0)
+                orderingTags.append(tag)
+
+        # Reshape initProb array into matrix (1 x N)
+        initProb = np.reshape(initProb, (1, len(initProb)))
 
         # Set class variables for future use
         self.initialProb = initProb
-        self.orderPOS = orderingTags
+        self.initPOS = orderingTags
 
-    def transitionProbCounting():
-        '''Create matrix for transition probabilities between POS tags - P(Sk+1|Sk)'''
-        pass
+    def transitionProbCounting(self):
+        '''Create matrix for transition probabilities between POS tags - P(Sk+1|Sk).
+        Each starting POS tag has a probability distribution over the next POS tag.'''
+        
+        tranCount = dict()
+
+        for tag1 in self.tags:
+            for tag2 in self.tags:
+                count = 0
+                for sentence in self.hiddenStates:
+                    for i in range(len(sentence)-1):
+                        if sentence[i] == tag1 and sentence[i+1] == tag2:
+                            count += 1
+                tranCount = {**tranCount, **{tag1 + '-' + tag2: count}}
+        
+        # Create transition probability matrix
+        tranProb = np.array([])
+        totalCount = sum(tranCount.values())
+        for tag1 in self.tags:
+            for tag2 in self.tags:
+                tranProb = np.append(tranProb, tranCount[tag1 + '-' + tag2]/totalCount)
+
+        # Reshape tranProb array into matrix (N x N)
+        tranProb = np.reshape(tranProb, (len(self.tags), len(self.tags)))
+
+        self.transitionProb = tranProb
 
     def observationProbCounting():
-        '''Create matrix for observation probabilities of word observation, given POS tag - P(ek|Sk)'''
+        '''Create matrix for observation probabilities of word observation, given POS tag - P(ek|Sk).
+        Each POS tag has a probability distribution over the word observed.'''
         pass
 
 def viterbi():
@@ -130,4 +174,5 @@ if __name__ == '__main__':
     hmm.parseTraining(training_list)
     hmm.sentenceSeperation('.')
     hmm.initialProbCounting()
-    print(hmm.initialProb)
+    hmm.transitionProbCounting()
+    print(hmm.transitionProb)
