@@ -3,7 +3,7 @@ import sys
 import argparse
 from collections import Counter
 from collections import defaultdict
-from itertools import groupby
+from itertools import chain
 import numpy as np
 
 class HMM:
@@ -25,7 +25,6 @@ class HMM:
         'AJ0-NN1', 'AJ0-VVG', 'AVP-PRP', 'AVQ-CJS', 'CJS-PRP', 'CJT-DT0', 'CRD-PNI', 'NN1-NP0', 'NN1-VVB',
         'NN1-VVG', 'NN2-VVZ', 'VVD-VVN', 'AV0-AJ0', 'VVN-AJ0', 'VVD-AJ0', 'NN1-AJ0', 'VVG-AJ0', 'PRP-AVP',
         'CJS-AVQ', 'PRP-CJS', 'DT0-CJT', 'PNI-CRD', 'NP0-NN1', 'VVB-NN1', 'VVG-NN1', 'VVZ-NN2', 'VVN-VVD']
-        self.tagCount = dict()
 
     def parseTraining(self, training_list):
         '''Parse training data and create two lists, one for the words (observations) and one for the POS tags (hidden states)'''
@@ -108,7 +107,7 @@ class HMM:
         '''Create matrix for transition probabilities between POS tags - P(Sk+1|Sk).
         Each starting POS tag has a probability distribution over the next POS tag.'''
         
-        tranCount = dict()
+        tagCount = dict()
         tranProb = np.array([])
 
         # Get number of times each tag appears in dataset (aside from last tag in each sentence since no transition occurs)
@@ -118,7 +117,7 @@ class HMM:
                 for i in range(len(sentence)-1):
                     if sentence[i] == tag:
                         count += 1
-            self.tagCount = {**self.tagCount, **{tag: count}}
+            tagCount = {**tagCount, **{tag: count}}
 
         # Get number of times each tag appears after another tag
         for tag1 in self.tags:
@@ -128,10 +127,10 @@ class HMM:
                     for i in range(len(sentence)-1):
                         if sentence[i] == tag1 and sentence[i+1] == tag2:
                             count += 1
-                if self.tagCount[tag1] == 0:
+                if tagCount[tag1] == 0:
                     tranProb = np.append(tranProb, 0)
                 else:
-                    tranProb = np.append(tranProb, count/self.tagCount[tag1])
+                    tranProb = np.append(tranProb, count/tagCount[tag1])
 
         # Reshape tranProb array into matrix (N x N)
         tranProb = np.reshape(tranProb, (len(self.tags), len(self.tags)))
@@ -143,26 +142,35 @@ class HMM:
         Each POS tag has a probability distribution over the word observed.'''
         
         obsProb = np.array([])
+
+        # Get number of times each tag appears in dataset
+        flat_list = list(chain.from_iterable(self.hiddenStates))
+        tagCount = Counter(flat_list)
         
         for tag in self.tags:
-            for word in self.observations:
-                count = 0
-                for sentence in self.hiddenStates:
-                    for i in range(len(sentence)):
-                        if sentence[i] == tag and word[i] == word:
-                            count += 1
-                if self.tagCount[tag] == 0:
-                    obsProb = np.append(obsProb, 0)
-                else:
-                    obsProb = np.append(obsProb, count/self.tagCount[tag])
-
+            for sentence in self.observations:
+                for word in sentence:
+                    count = 0
+                    for i in range(len(self.hiddenStates)):
+                        for j in range(len(self.hiddenStates[i])):
+                            if self.hiddenStates[i][j] == tag and self.observations[i][j] == word:
+                                count += 1
+                    if tagCount[tag] == 0:
+                        obsProb = np.append(obsProb, 0)
+                    else:
+                        obsProb = np.append(obsProb, count/tagCount[tag])
+        
         # Reshape obsProb array into matrix (N x M)
-        obsProb = np.reshape(obsProb, (len(self.tags), len(self.observations)))
+        obsProb = np.reshape(obsProb, (len(self.tags), len(list(chain.from_iterable(self.observations)))))
 
         self.observationProb = obsProb
 
 def viterbi():
     '''Use Viterbi algorithm to determine the most likely sequence of POS tags'''
+    pass
+
+def wordNotinTraining():
+    '''If word not in training data, use Laplace smoothing to calculate observation probability'''
     pass
 
 def trackSequence():
@@ -172,6 +180,12 @@ def trackSequence():
 def output_file(filename, soln):
     # Create output file
     sys.stdout = open(filename, 'w')
+
+    # Write matrix to output file
+    for row in soln:
+        for col in row:
+            sys.stdout.write(str(col) + " ")
+        sys.stdout.write("\n")
 
     # TODO: Write results to output file
 
@@ -210,8 +224,7 @@ if __name__ == '__main__':
     hmm.parseTraining(training_list)
     hmm.sentenceSeperation('.')
     hmm.initialProbCounting()
-    #hmm.transitionProbCounting()
-    # hmm.observationProbCounting()
-    # print(np.sum(hmm.observationProb, axis=1))
-    print(len(hmm.observations))
-    print(hmm.hiddenStates)
+    hmm.transitionProbCounting()
+    hmm.observationProbCounting()
+    # output_file(args.outputfile, hmm.observationProb)
+    print(np.sum(hmm.observationProb, axis=1))
