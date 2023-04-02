@@ -25,6 +25,7 @@ class HMM:
         'AJ0-NN1', 'AJ0-VVG', 'AVP-PRP', 'AVQ-CJS', 'CJS-PRP', 'CJT-DT0', 'CRD-PNI', 'NN1-NP0', 'NN1-VVB',
         'NN1-VVG', 'NN2-VVZ', 'VVD-VVN', 'AV0-AJ0', 'VVN-AJ0', 'VVD-AJ0', 'NN1-AJ0', 'VVG-AJ0', 'PRP-AVP',
         'CJS-AVQ', 'PRP-CJS', 'DT0-CJT', 'PNI-CRD', 'NP0-NN1', 'VVB-NN1', 'VVG-NN1', 'VVZ-NN2', 'VVN-VVD']
+        self.tagCount = dict()
 
     def parseTraining(self, training_list):
         '''Parse training data and create two lists, one for the words (observations) and one for the POS tags (hidden states)'''
@@ -108,7 +109,18 @@ class HMM:
         Each starting POS tag has a probability distribution over the next POS tag.'''
         
         tranCount = dict()
+        tranProb = np.array([])
 
+        # Get number of times each tag appears in dataset (aside from last tag in each sentence since no transition occurs)
+        for tag in self.tags:
+            count = 0
+            for sentence in self.hiddenStates:
+                for i in range(len(sentence)-1):
+                    if sentence[i] == tag:
+                        count += 1
+            self.tagCount = {**self.tagCount, **{tag: count}}
+
+        # Get number of times each tag appears after another tag
         for tag1 in self.tags:
             for tag2 in self.tags:
                 count = 0
@@ -116,24 +128,38 @@ class HMM:
                     for i in range(len(sentence)-1):
                         if sentence[i] == tag1 and sentence[i+1] == tag2:
                             count += 1
-                tranCount = {**tranCount, **{tag1 + '-' + tag2: count}}
-        
-        # Create transition probability matrix
-        tranProb = np.array([])
-        totalCount = sum(tranCount.values())
-        for tag1 in self.tags:
-            for tag2 in self.tags:
-                tranProb = np.append(tranProb, tranCount[tag1 + '-' + tag2]/totalCount)
+                if self.tagCount[tag1] == 0:
+                    tranProb = np.append(tranProb, 0)
+                else:
+                    tranProb = np.append(tranProb, count/self.tagCount[tag1])
 
         # Reshape tranProb array into matrix (N x N)
         tranProb = np.reshape(tranProb, (len(self.tags), len(self.tags)))
 
         self.transitionProb = tranProb
 
-    def observationProbCounting():
+    def observationProbCounting(self):
         '''Create matrix for observation probabilities of word observation, given POS tag - P(ek|Sk).
         Each POS tag has a probability distribution over the word observed.'''
-        pass
+        
+        obsProb = np.array([])
+        
+        for tag in self.tags:
+            for word in self.observations:
+                count = 0
+                for sentence in self.hiddenStates:
+                    for i in range(len(sentence)):
+                        if sentence[i] == tag and word[i] == word:
+                            count += 1
+                if self.tagCount[tag] == 0:
+                    obsProb = np.append(obsProb, 0)
+                else:
+                    obsProb = np.append(obsProb, count/self.tagCount[tag])
+
+        # Reshape obsProb array into matrix (N x M)
+        obsProb = np.reshape(obsProb, (len(self.tags), len(self.observations)))
+
+        self.observationProb = obsProb
 
 def viterbi():
     '''Use Viterbi algorithm to determine the most likely sequence of POS tags'''
@@ -142,6 +168,16 @@ def viterbi():
 def trackSequence():
     '''With Viterbi algorithm complete, track most likely sequence and print results to output file'''
     pass
+
+def output_file(filename, soln):
+    # Create output file
+    sys.stdout = open(filename, 'w')
+
+    # TODO: Write results to output file
+
+    # Close file
+    sys.stdout.close()
+    sys.stdout = sys.__stdout__
 
 if __name__ == '__main__':
 
@@ -174,5 +210,8 @@ if __name__ == '__main__':
     hmm.parseTraining(training_list)
     hmm.sentenceSeperation('.')
     hmm.initialProbCounting()
-    hmm.transitionProbCounting()
-    print(hmm.transitionProb)
+    #hmm.transitionProbCounting()
+    # hmm.observationProbCounting()
+    # print(np.sum(hmm.observationProb, axis=1))
+    print(len(hmm.observations))
+    print(hmm.hiddenStates)
