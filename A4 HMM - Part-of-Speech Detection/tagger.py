@@ -139,29 +139,36 @@ class HMM:
 
     def observationProbCounting(self):
         '''Create matrix for observation probabilities of word observation, given POS tag - P(ek|Sk).
-        Each POS tag has a probability distribution over the word observed.'''
+        Each POS tag has a probability distribution over observed words.'''
         
-        obsProb = np.array([])
+        tagCount = dict()
+        flat_obs = list(chain.from_iterable(self.observations))
+        flat_obs_set = set(flat_obs)
 
         # Get number of times each tag appears in dataset
-        flat_list = list(chain.from_iterable(self.hiddenStates))
-        tagCount = Counter(flat_list)
-        
-        for tag in self.tags:
-            for sentence in self.observations:
-                for word in sentence:
-                    count = 0
-                    for i in range(len(self.hiddenStates)):
-                        for j in range(len(self.hiddenStates[i])):
-                            if self.hiddenStates[i][j] == tag and self.observations[i][j] == word:
-                                count += 1
-                    if tagCount[tag] == 0:
-                        obsProb = np.append(obsProb, 0)
-                    else:
-                        obsProb = np.append(obsProb, count/tagCount[tag])
-        
-        # Reshape obsProb array into matrix (N x M)
-        obsProb = np.reshape(obsProb, (len(self.tags), len(list(chain.from_iterable(self.observations)))))
+        flat_pos = list(chain.from_iterable(self.hiddenStates))
+        tagTotal = Counter(flat_pos)
+
+        # Join observations and hiddenStates into one list of tuples
+        obs_pos = list(zip(flat_obs, flat_pos))
+        while ('', '') in obs_pos:
+            obs_pos.remove(('', ''))
+        obsProb = np.zeros((len(self.tags), (len(flat_obs_set))))
+
+        # Get count of word given POS tag using obs_pos list and tagCount dictionary
+        for obs in obs_pos:
+            if obs in tagCount:
+                tagCount[obs] += 1
+            elif obs not in tagCount:
+                tagCount[obs] = 1
+
+            # Form observation probability matrix
+            obsLoc = list(flat_obs_set).index(obs[0])
+            tagLoc = self.tags.index(obs[1])
+            if obs[1] in tagTotal:
+                obsProb[tagLoc][obsLoc] =  tagCount[obs]/tagTotal[obs[1]]
+            else:
+                obsProb[tagLoc][obsLoc] = 0
 
         self.observationProb = obsProb
 
