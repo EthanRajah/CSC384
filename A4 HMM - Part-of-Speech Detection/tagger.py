@@ -9,13 +9,13 @@ import numpy as np
 class HMM:
     '''Hidden Markov Model class to store relevent matrices and function sequences
     Note that N = number of POS tags and M = number of words in the data set'''
-    def __init__(self, training_list, test_data):
+    def __init__(self, training_list, test_file, output):
         self.trainingList = training_list
-        self.testData = test_data
+        self.testFile = test_file
+        self.outputFile = output
         self.observations = []
         self.hiddenStates = []
         self.testSentences = []
-        self.initPOS = []
         self.initialProb = np.array([])
         self.transitionProb = np.array([])
         self.observationProb = np.array([])
@@ -80,22 +80,27 @@ class HMM:
     def sentenceSeperationTest(self, symbol):
         '''Split test data into sentences using symbol of choice (i.e. periods, colons etc)'''
 
+        words = []
+        with open(self.testFile, 'r') as f:
+            for line in f:
+                words.append(line.strip())
+
         sentences = []
         sentence = []
-        for word in self.testData:
+        for word in words:
             if word == symbol:
                 sentences.append(sentence)
                 sentence = []
             else:
                 sentence.append(word)
-        
+
         self.testSentences = sentences
 
     def initialProbCounting(self):
         '''Create matrix for the initial probabilities for each POS tag - P(S0)'''
         
         numSentences = len(self.hiddenStates)
-        initProb = np.array([])
+        initProb = np.zeros((1, len(self.tags)))
         initStates = []
 
         # Get first column of hiddenStates matrix
@@ -103,31 +108,21 @@ class HMM:
             initStates.append(sentence[0])
 
         initCount = Counter(initStates)
-        orderingTags = list(initCount.keys())
 
         # Using initCount, create initProb array of initial probabilities for each POS tag
         for tag in initCount:
-            initProb = np.append(initProb, initCount[tag]/numSentences)
-        
-        # For each POS tag not seen in tags, append 0 to initProb array
-        for tag in self.tags:
-            if tag not in orderingTags:
-                initProb = np.append(initProb, 0)
-                orderingTags.append(tag)
-
-        # Reshape initProb array into matrix (1 x N)
-        initProb = np.reshape(initProb, (1, len(initProb)))
+            i1 = self.tags.index(tag)
+            initProb[0][i1] = initCount[tag]/numSentences
 
         # Set class variables for future use
         self.initialProb = initProb[0]
-        self.initPOS = orderingTags
 
     def transitionProbCounting(self):
         '''Create matrix for transition probabilities between POS tags - P(Sk+1|Sk).
         Each starting POS tag has a probability distribution over the next POS tag.'''
         
         tagCount = dict()
-        tranProb = np.array([])
+        tranProb = np.zeros((len(self.tags), len(self.tags)))
 
         # Get number of times each tag appears in dataset (aside from last tag in each sentence since no transition occurs)
         for tag in self.tags:
@@ -146,13 +141,9 @@ class HMM:
                     for i in range(len(sentence)-1):
                         if sentence[i] == tag1 and sentence[i+1] == tag2:
                             count += 1
-                if tagCount[tag1] == 0:
-                    tranProb = np.append(tranProb, 0)
-                else:
-                    tranProb = np.append(tranProb, count/tagCount[tag1])
-
-        # Reshape tranProb array into matrix (N x N)
-        tranProb = np.reshape(tranProb, (len(self.tags), len(self.tags)))
+                i1 = self.tags.index(tag1)
+                i2 = self.tags.index(tag2)
+                tranProb[i1][i2] = (count+1)/(tagCount[tag1]+len(self.tags))
 
         self.transitionProb = tranProb
 
@@ -195,7 +186,7 @@ class HMM:
 
 def viterbi(hmm, E):
     '''Use Viterbi algorithm to determine the most likely sequence of POS tags for one sentence'''
-    
+
     # Initialize matrices for Viterbi algorithm
     prob = np.zeros((len(E), len(hmm.tags)))
     prev = np.zeros((len(E), len(hmm.tags)))
@@ -203,37 +194,51 @@ def viterbi(hmm, E):
     # Initialize first column of prob matrix and prev matrix with initial probabilities
     for i in range(len(hmm.tags)):
         # Check if word is in training data
-        if E[0] in hmm.observationSet[i]:
-            e0 = hmm.observationSet[i].index(E[0])
+        if E[0] in hmm.observationSet:
+            e0 = hmm.observationSet.index(E[0])
             prob[0][i] = hmm.initialProb[i]*hmm.observationProb[i][e0]
             prev[0][i] = None
         else:
-            prob[0][i], prev[0][i] = wordNotinTraining(hmm, prob, None, E, i, 0)
-
+            prob[0][i], prev[0][i] = wordNotinTraining(hmm, prob, prev, E[0], i, 0)
     # For time steps 1 to length(E)-1, find each current state's most likely prior state, x
     for t in range(1, len(E)):
         for i in range(len(hmm.tags)):
             # Check if word is in training data
-            if E[t] in hmm.observationSet[i]:
-                e = hmm.observationSet[i].index(E[t])
+            if E[t] in hmm.observationSet:
+                e = hmm.observationSet.index(E[t])
                 # Find most likely prior state, x
                 x = np.argmax(prob[t-1,:]*hmm.transitionProb[:,i]*hmm.observationProb[i][e])
                 prob[t][i] = prob[t-1][x]*hmm.transitionProb[x][i]*hmm.observationProb[i][e]
                 prev[t][i] = x
             else:
-                prob[t][i], prev[t][i] = wordNotinTraining(hmm, prob, prev, E, i, t)
-    
+                prob[t][i], prev[t][i] = wordNotinTraining(hmm, prob, prev, E[t], i, t)
+
     return prob, prev
 
-def wordNotinTraining(hmm, prob, prev, E, i, t):
-    '''If word not in training data, use Laplace smoothing to calculate observation probability'''
-    pass
+def wordNotinTraining(hmm, prob, prev, word, i, t):
+    '''If word not in training data, calculate most likely POS tag for current word'''
+    
+    # Use overall POS distribution for tag index i to calculate most likely POS tag for current word
+    e = np.argmax(hmm.observationProb[i, :])
+
+    if t == 0:
+        # Base case - first word in sentence
+        prob[t][i] = hmm.initialProb[i]*hmm.observationProb[i][e]
+        prev[t][i] = None
+    
+    else:
+        # Recursive case
+        x = np.argmax(prob[t-1,:]*hmm.transitionProb[:,i]*hmm.observationProb[i][e])
+        prob[t][i] = prob[t-1][x]*hmm.transitionProb[x][i]*hmm.observationProb[i][e]
+        prev[t][i] = x
+
+    return prob[t][i], prev[t][i]
 
 def trackSequence(hmm):
     '''Use Viterbi to track most likely sequence of POS tags for each sentence and print results to output file'''
     
     fullSequenceInds = []
-
+    
     # Perform Viterbi algorithm on each sentence in test data
     for sentence in hmm.testSentences:
         prob, prev = viterbi(hmm, sentence)
@@ -243,24 +248,71 @@ def trackSequence(hmm):
         sequence = [finalState]
         for i in range(len(sentence)-1, 0, -1):
             # Get index of most likely prior POS for final POS and work backwards
-            sequence.append(prev[i][sequence[-1]])
+            if prev[i][sequence[-1]] != None:
+                sequence.append(int(prev[i][sequence[-1]]))
+            else:
+                break
         sequence.reverse()
         fullSequenceInds.append(sequence)
-
     # Print results to output file
-    output_file('test_predictions.txt', hmm.testSentences, fullSequenceInds)
+    output_file(hmm, fullSequenceInds)
 
-def output_file(filename, testData, sequence):
+def measureAccuracy(hmm, trueLabels, symbol):
+    '''Measure accuracy of predicted POS tags against true labels'''
+    
+    words = []
+    posTags = []
+    predictions = []
+
+    with open(trueLabels, 'r') as f:
+        for line in f:
+            line = line.split(':')
+            words.append(line[0].strip())
+            posTags.append(line[1].strip())
+    
+    sentences = []
+    sentence = []
+    posTagSentence = []
+    posTagSentences = []
+    for i, word in enumerate(words):
+        if word == symbol:
+            sentences.append(sentence)
+            sentence = []
+            posTagSentences.append(posTagSentence)
+            posTagSentence = []
+        else:
+            sentence.append(word)
+            posTagSentence.append(posTags[i])
+    
+    # Flatten list of lists of POS tags
+    posTagSentences = list(chain.from_iterable(posTagSentences))
+
+    # Read predicted POS tags from output file
+    with open(hmm.outputFile, 'r') as f:
+        for line in f:
+            line = line.split(':')
+            predictions.append(line[1].strip())
+    
+    # Calculate accuracy
+    correct = 0
+    for i in range(len(predictions)):
+        if predictions[i] == posTagSentences[i]:
+            correct += 1
+    accuracy = correct/len(predictions)
+    print('Accuracy: ' + str(accuracy))
+    
+def output_file(hmm, sequence):
     '''Create output file with predicted POS tags for each word in test data'''
     
     # Create output file
+    filename = hmm.outputFile
     sys.stdout = open(filename, 'w')
 
     # Output words and corresponding POS tags, seperated by colon using stdout
-    for i in range(len(testData)):
-        for j in range(len(testData[i])):
-            sys.stdout.write(testData[i][j] + ':' + hmm.tags[sequence[i][j]])
-        sys.stdout.write('\n')
+    for i in range(len(hmm.testSentences)):
+        for j in range(len(hmm.testSentences[i])):
+            sys.stdout.write(hmm.testSentences[i][j] + ' : ' + hmm.tags[sequence[i][j]])
+            sys.stdout.write('\n')
 
     # Close file
     sys.stdout.close()
@@ -291,13 +343,26 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     training_list = args.trainingfiles[0]
-    test_file = args.testfile[0]
+    test_file = args.testfile
+    output = args.outputfile
 
     # Initialize HMM class and parse training data
-    hmm = HMM(training_list, test_file)
-    hmm.parseTraining(training_list)
+    hmm = HMM(training_list, test_file, output)
+    hmm.parseTraining()
     hmm.sentenceSeperation('.')
     hmm.initialProbCounting()
     hmm.transitionProbCounting()
     hmm.observationProbCounting()
+    trackSequence(hmm)
+    measureAccuracy(hmm, 'training1.txt', '.')
+
+    # Print transition probabilities to an output file
+    # sys.stdout = open('transition_probabilities.txt', 'w')
+    # for i in range(len(hmm.tags)):
+    #     for j in range(len(hmm.tags)):
+    #         sys.stdout.write(str(hmm.transitionProb[i][j]) + ' ')
+    #     sys.stdout.write('\n')
+    # sys.stdout.close()
+    # sys.stdout = sys.__stdout__
+
     
