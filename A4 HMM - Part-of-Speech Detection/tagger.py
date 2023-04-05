@@ -5,6 +5,7 @@ from collections import Counter
 from collections import defaultdict
 from itertools import chain
 import numpy as np
+import time
 
 class HMM:
     '''Hidden Markov Model class to store relevent matrices and function sequences
@@ -19,6 +20,8 @@ class HMM:
         self.initialProb = np.array([])
         self.transitionProb = np.array([])
         self.observationProb = np.array([])
+        self.obsPos = []
+        self.tagTotal = dict()
         self.observationSet = []
         self.tags = ["AJ0", "AJC", "AJS", "AT0", "AV0", "AVP", "AVQ", "CJC", "CJS", "CJT", "CRD",
         "DPS", "DT0", "DTQ", "EX0", "ITJ", "NN0", "NN1", "NN2", "NP0", "ORD", "PNI",
@@ -35,65 +38,90 @@ class HMM:
 
         words = []
         posTags = []
+        obsPos = []
 
         for training_file in self.trainingList:
             # Open training file, for each line split on colon, appending first element to words list and second element to posTags list
             with open(training_file, 'r') as f:
                 for line in f:
                     line = line.split(':')
-                    words.append(line[0].strip())
-                    posTags.append(line[1].strip())
+                    word = line[0].strip()
+                    pos = line[1].strip()
+                    
+                    if word != '' and pos != '':
+                        obsPos.append((word, pos))
+                        words.append(word)
+                        posTags.append(pos)
+
+                    if word not in self.observationSet and word != '':
+                        self.observationSet.append(word)
+
+                    if pos not in self.tagTotal and pos != '':
+                        self.tagTotal[pos] = 1
+                    elif pos != '':
+                        self.tagTotal[pos] += 1
 
         self.observations = words
         self.hiddenStates = posTags
+        self.obsPos = obsPos
 
-    def sentenceSeperation(self, symbol):
+        # Create dictionary of words and their index in observationSet
+        self.observationDict = dict()
+        for i in range(len(self.observationSet)):
+            self.observationDict[self.observationSet[i]] = i
+        
+        # Create dictionary of POS tags and their index in tags
+        self.tagDict = dict()
+        for i in range(len(self.tags)):
+            self.tagDict[self.tags[i]] = i
+
+    def sentenceSeperation(self, symbols):
         '''Create matrices of words and POS tags using symbol of choice (i.e. periods, colons etc) to split sentences'''
         
         sentences = []
         sentence = []
         posTagSentence = []
         posTagSentences = []
-        for i, word in enumerate(self.observations):
-            if word == symbol:
+        # Split observations and hiddenStates into sentences by symbols specified, putting symbols in their own sentence
+        for i in range(len(self.observations)):
+            if self.observations[i] in symbols:
+                sentence.append(self.observations[i])
                 sentences.append(sentence)
                 sentence = []
+                posTagSentence.append(self.hiddenStates[i])
                 posTagSentences.append(posTagSentence)
                 posTagSentence = []
             else:
-                sentence.append(word)
+                sentence.append(self.observations[i])
                 posTagSentence.append(self.hiddenStates[i])
-        sentences.append(sentence)
-        posTagSentences.append(posTagSentence)
-
-        # Remove empty list at the end of each matrix, sentences and posTagSentences
-        sentences.pop()
-        posTagSentences.pop()
         
         # Overwrite observations array with sentences array and hiddenStates array with posTagSentences array
         self.observations = sentences
         self.hiddenStates = posTagSentences
 
         # Split test data into sentences
-        self.sentenceSeperationTest(symbol)
+        self.sentenceSeperationTest(symbols)
 
-    def sentenceSeperationTest(self, symbol):
+    def sentenceSeperationTest(self, symbols):
         '''Split test data into sentences using symbol of choice (i.e. periods, colons etc)'''
 
         words = []
         with open(self.testFile, 'r') as f:
             for line in f:
-                words.append(line.strip())
+                if line.strip() != '':
+                    words.append(line.strip())
 
         sentences = []
         sentence = []
+        # Split test words into sentences by symbols specified, putting symbols in their own sentence
         for word in words:
-            if word == symbol:
+            if word in symbols:
+                sentence.append(word)
                 sentences.append(sentence)
                 sentence = []
             else:
                 sentence.append(word)
-
+        
         self.testSentences = sentences
 
     def initialProbCounting(self):
@@ -111,7 +139,7 @@ class HMM:
 
         # Using initCount, create initProb array of initial probabilities for each POS tag
         for tag in initCount:
-            i1 = self.tags.index(tag)
+            i1 = self.tagDict[tag]
             initProb[0][i1] = initCount[tag]/numSentences
 
         # Set class variables for future use
@@ -122,28 +150,25 @@ class HMM:
         Each starting POS tag has a probability distribution over the next POS tag.'''
         
         tagCount = dict()
-        tranProb = np.zeros((len(self.tags), len(self.tags)))
+        tranProb = np.ones((len(self.tags), len(self.tags)))
 
-        # Get number of times each tag appears in dataset (aside from last tag in each sentence since no transition occurs)
+        for sentence in self.hiddenStates:
+            for i in range(1,len(sentence)):
+                if sentence[i-1] not in tagCount:
+                    tagCount[sentence[i-1]] = 1
+                else:
+                    tagCount[sentence[i-1]] += 1
+                
+                i1 = self.tagDict[sentence[i-1]]
+                i2 = self.tagDict[sentence[i]]
+                tranProb[i1][i2] += 1
+        
         for tag in self.tags:
-            count = 0
-            for sentence in self.hiddenStates:
-                for i in range(len(sentence)-1):
-                    if sentence[i] == tag:
-                        count += 1
-            tagCount = {**tagCount, **{tag: count}}
-
-        # Get number of times each tag appears after another tag
-        for tag1 in self.tags:
-            for tag2 in self.tags:
-                count = 0
-                for sentence in self.hiddenStates:
-                    for i in range(len(sentence)-1):
-                        if sentence[i] == tag1 and sentence[i+1] == tag2:
-                            count += 1
-                i1 = self.tags.index(tag1)
-                i2 = self.tags.index(tag2)
-                tranProb[i1][i2] = (count+1)/(tagCount[tag1]+len(self.tags))
+            ind1 = self.tagDict[tag]
+            if tag in tagCount:
+                tranProb[ind1] = tranProb[ind1] / (tagCount[tag] + len(self.tags))
+            else:
+                tranProb[ind1] = tranProb[ind1] / (len(self.tags))
 
         self.transitionProb = tranProb
 
@@ -152,37 +177,24 @@ class HMM:
         Each POS tag has a probability distribution over observed words.'''
         
         tagCount = dict()
-        flat_obs = list(chain.from_iterable(self.observations))
-        flat_obs_set = set(flat_obs)
-
-        # Get number of times each tag appears in dataset
-        flat_pos = list(chain.from_iterable(self.hiddenStates))
-        tagTotal = Counter(flat_pos)
-
-        # Join observations and hiddenStates into one list of tuples
-        obs_pos = list(zip(flat_obs, flat_pos))
-        while ('', '') in obs_pos:
-            obs_pos.remove(('', ''))
-
-        obsProb = np.zeros((len(self.tags), (len(flat_obs_set))))
+        obsProb = np.zeros((len(self.tags), (len(self.observationSet))))
 
         # Get count of word given POS tag using obs_pos list and tagCount dictionary
-        for obs in obs_pos:
+        for obs in self.obsPos:
             if obs in tagCount:
                 tagCount[obs] += 1
             elif obs not in tagCount:
                 tagCount[obs] = 1
 
             # Form observation probability matrix - (N x M)
-            obsLoc = list(flat_obs_set).index(obs[0])
-            tagLoc = self.tags.index(obs[1])
-            if obs[1] in tagTotal:
-                obsProb[tagLoc][obsLoc] =  tagCount[obs]/tagTotal[obs[1]]
+            obsLoc = self.observationDict[obs[0]]
+            tagLoc = self.tagDict[obs[1]]
+            if obs[1] in self.tagTotal:
+                obsProb[tagLoc][obsLoc] =  tagCount[obs]/self.tagTotal[obs[1]]
             else:
                 obsProb[tagLoc][obsLoc] = 0
 
         self.observationProb = obsProb
-        self.observationSet = list(flat_obs_set)
 
 def viterbi(hmm, E):
     '''Use Viterbi algorithm to determine the most likely sequence of POS tags for one sentence'''
@@ -195,44 +207,28 @@ def viterbi(hmm, E):
     for i in range(len(hmm.tags)):
         # Check if word is in training data
         if E[0] in hmm.observationSet:
-            e0 = hmm.observationSet.index(E[0])
+            e0 = hmm.observationDict[E[0]]
             prob[0][i] = hmm.initialProb[i]*hmm.observationProb[i][e0]
             prev[0][i] = None
         else:
-            prob[0][i], prev[0][i] = wordNotinTraining(hmm, prob, prev, E[0], i, 0)
+            prob[0][i] = hmm.initialProb[i]
+            prev[0][i] = None
     # For time steps 1 to length(E)-1, find each current state's most likely prior state, x
     for t in range(1, len(E)):
         for i in range(len(hmm.tags)):
             # Check if word is in training data
             if E[t] in hmm.observationSet:
-                e = hmm.observationSet.index(E[t])
+                e = hmm.observationDict[E[t]]
                 # Find most likely prior state, x
                 x = np.argmax(prob[t-1,:]*hmm.transitionProb[:,i]*hmm.observationProb[i][e])
                 prob[t][i] = prob[t-1][x]*hmm.transitionProb[x][i]*hmm.observationProb[i][e]
                 prev[t][i] = x
             else:
-                prob[t][i], prev[t][i] = wordNotinTraining(hmm, prob, prev, E[t], i, t)
+                x = np.argmax(prob[t-1,:]*hmm.transitionProb[:,i])
+                prob[t][i] = prob[t-1][x]*hmm.transitionProb[x][i]
+                prev[t][i] = x
 
     return prob, prev
-
-def wordNotinTraining(hmm, prob, prev, word, i, t):
-    '''If word not in training data, calculate most likely POS tag for current word'''
-    
-    # Use overall POS distribution for tag index i to calculate most likely POS tag for current word
-    e = np.argmax(hmm.observationProb[i, :])
-
-    if t == 0:
-        # Base case - first word in sentence
-        prob[t][i] = hmm.initialProb[i]*hmm.observationProb[i][e]
-        prev[t][i] = None
-    
-    else:
-        # Recursive case
-        x = np.argmax(prob[t-1,:]*hmm.transitionProb[:,i]*hmm.observationProb[i][e])
-        prob[t][i] = prob[t-1][x]*hmm.transitionProb[x][i]*hmm.observationProb[i][e]
-        prev[t][i] = x
-
-    return prob[t][i], prev[t][i]
 
 def trackSequence(hmm):
     '''Use Viterbi to track most likely sequence of POS tags for each sentence and print results to output file'''
@@ -254,10 +250,11 @@ def trackSequence(hmm):
                 break
         sequence.reverse()
         fullSequenceInds.append(sequence)
+
     # Print results to output file
     output_file(hmm, fullSequenceInds)
 
-def measureAccuracy(hmm, trueLabels, symbol):
+def measureAccuracy(hmm, trueLabels, symbols):
     '''Measure accuracy of predicted POS tags against true labels'''
     
     words = []
@@ -267,36 +264,21 @@ def measureAccuracy(hmm, trueLabels, symbol):
     with open(trueLabels, 'r') as f:
         for line in f:
             line = line.split(':')
-            words.append(line[0].strip())
-            posTags.append(line[1].strip())
+            if line[0].strip() != '' and line[1].strip() != '':
+                words.append(line[0].strip())
+                posTags.append(line[1].strip())
     
-    sentences = []
-    sentence = []
-    posTagSentence = []
-    posTagSentences = []
-    for i, word in enumerate(words):
-        if word == symbol:
-            sentences.append(sentence)
-            sentence = []
-            posTagSentences.append(posTagSentence)
-            posTagSentence = []
-        else:
-            sentence.append(word)
-            posTagSentence.append(posTags[i])
-    
-    # Flatten list of lists of POS tags
-    posTagSentences = list(chain.from_iterable(posTagSentences))
-
     # Read predicted POS tags from output file
     with open(hmm.outputFile, 'r') as f:
         for line in f:
             line = line.split(':')
-            predictions.append(line[1].strip())
+            if line[0].strip() != '' and line[1].strip() != '':
+                predictions.append(line[1].strip())
     
     # Calculate accuracy
     correct = 0
     for i in range(len(predictions)):
-        if predictions[i] == posTagSentences[i]:
+        if predictions[i] == posTags[i]:
             correct += 1
     accuracy = correct/len(predictions)
     print('Accuracy: ' + str(accuracy))
@@ -347,22 +329,16 @@ if __name__ == '__main__':
     output = args.outputfile
 
     # Initialize HMM class and parse training data
+    # t0 = time.time()
     hmm = HMM(training_list, test_file, output)
     hmm.parseTraining()
-    hmm.sentenceSeperation('.')
+    hmm.sentenceSeperation(['.', '?', '!'])
     hmm.initialProbCounting()
     hmm.transitionProbCounting()
     hmm.observationProbCounting()
     trackSequence(hmm)
-    measureAccuracy(hmm, 'training1.txt', '.')
-
-    # Print transition probabilities to an output file
-    # sys.stdout = open('transition_probabilities.txt', 'w')
-    # for i in range(len(hmm.tags)):
-    #     for j in range(len(hmm.tags)):
-    #         sys.stdout.write(str(hmm.transitionProb[i][j]) + ' ')
-    #     sys.stdout.write('\n')
-    # sys.stdout.close()
-    # sys.stdout = sys.__stdout__
-
+    # measureAccuracy(hmm, 'true_labels.txt', ['.' , '?', '!'])
+    # t1 = time.time()
+    # print('Time: ' + str(t1-t0))
+    
     
